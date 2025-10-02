@@ -7,7 +7,7 @@ import HelpModal from './HelpModal'
 /**
  * Menu compte utilisateur avec dropdown style Gmail
  */
-const AccountMenu = ({ user, onSignOut }) => {
+const AccountMenu = ({ user, onSignOut, showSchedulingFields, onToggleSchedulingFields }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [showAccountModal, setShowAccountModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -191,6 +191,8 @@ Sign Out
       {showSettingsModal && (
         <SettingsModal
           onClose={() => setShowSettingsModal(false)}
+          showSchedulingFields={showSchedulingFields}
+          onToggleSchedulingFields={onToggleSchedulingFields}
         />
       )}
 

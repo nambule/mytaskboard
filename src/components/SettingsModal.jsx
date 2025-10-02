@@ -6,7 +6,7 @@ import { useCompartments } from '../hooks/useCompartments'
 /**
  * Modal for managing application settings (compartments management)
  */
-const SettingsModal = ({ onClose }) => {
+const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleSchedulingFields }) => {
   // Handle close - reload for any compartment changes
   const handleClose = () => {
     if (hasChanges) {
@@ -149,6 +149,12 @@ const SettingsModal = ({ onClose }) => {
     setDragOverItem(null)
   }
 
+  const handleSchedulingToggle = (event) => {
+    if (typeof onToggleSchedulingFields === 'function') {
+      onToggleSchedulingFields(event.target.checked)
+    }
+  }
+
   const handleDragOver = (e) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
@@ -228,6 +234,28 @@ const SettingsModal = ({ onClose }) => {
         {/* Content */}
         <div className="p-6 overflow-y-auto flex-1">
           <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4">
+                Display Options
+              </h3>
+              <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/40">
+                <input
+                  type="checkbox"
+                  checked={showSchedulingFields}
+                  onChange={handleSchedulingToggle}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <div>
+                  <div className="text-sm font-medium text-slate-900 dark:text-white">
+                    Scheduling fields
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    Show start/end dates, time allocation, and workload summary in the task modal.
+                  </p>
+                </div>
+              </label>
+            </div>
+
             {/* Compartments Management */}
             <div>
               <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4">

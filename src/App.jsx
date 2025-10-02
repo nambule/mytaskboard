@@ -45,6 +45,10 @@ function App() {
     const saved = localStorage.getItem('kanban-dark-mode')
     return saved ? JSON.parse(saved) : false
   })
+  const [showSchedulingFields, setShowSchedulingFields] = useState(() => {
+    const saved = localStorage.getItem('kanban-show-scheduling-fields')
+    return saved ? JSON.parse(saved) : false
+  })
   const { compartments: compartmentObjects, compartmentNames } = useCompartments()
   const [search, setSearch] = useState("")
   const [priorityFilter, setPriorityFilter] = useState({ 
@@ -71,6 +75,10 @@ function App() {
       document.documentElement.classList.remove('dark')
     }
   }, [darkMode])
+
+  useEffect(() => {
+    localStorage.setItem('kanban-show-scheduling-fields', JSON.stringify(showSchedulingFields))
+  }, [showSchedulingFields])
 
 
   // Hook d'authentification
@@ -710,7 +718,12 @@ Quick Task
             </button>
 
             {/* Menu compte utilisateur */}
-            <AccountMenu user={user} onSignOut={signOut} />
+            <AccountMenu 
+              user={user} 
+              onSignOut={signOut} 
+              showSchedulingFields={showSchedulingFields}
+              onToggleSchedulingFields={setShowSchedulingFields}
+            />
           </div>
         </div>
       </header>
@@ -902,6 +915,7 @@ Quick Task
           prefillTitle={modal.prefillTitle}
           fromQuickId={modal.fromQuickId}
           loading={false}
+          showSchedulingFields={showSchedulingFields}
         />
       )}
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Plus, X, Star } from 'lucide-react'
+import { Plus, X, Star, Check } from 'lucide-react'
 import { Select, SelectTrigger, SelectContent, SelectItem } from './ui/Select'
 import DateRangePicker from './ui/DateRangePicker'
 import { 
@@ -15,6 +15,15 @@ import {
 } from '../utils/constants'
 import { badgeStyle, styleWhen } from '../utils/helpers'
 
+let confettiModule
+const loadConfetti = async () => {
+  if (typeof window === 'undefined') return null
+  if (!confettiModule) {
+    confettiModule = import('canvas-confetti').then(mod => mod.default || mod)
+  }
+  return confettiModule
+}
+
 /**
  * Modale pour créer/éditer une tâche
  */
@@ -29,7 +38,8 @@ const TaskModal = ({
   compartments = [],
   prefillTitle = "", 
   fromQuickId = null,
-  loading = false
+  loading = false,
+  showSchedulingFields = false
 }) => {
   const editing = editingId ? tasks[editingId] : null
   
@@ -66,6 +76,8 @@ const TaskModal = ({
   
   const [subtasks, setSubtasks] = useState(normalizeSubtasks(editing?.subtasks || []))
   const [subInput, setSubInput] = useState("")
+
+  const isActionDisabled = loading || !title.trim() || (fromQuickId && !compartment)
 
   const handleAddSubtask = () => {
     if (!subInput.trim()) return
@@ -107,7 +119,7 @@ const TaskModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!title.trim()) return
     if (fromQuickId && !compartment) return
     
@@ -134,6 +146,53 @@ const TaskModal = ({
       await onSave(taskData)
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error)
+    }
+  }
+
+  const handleMarkAsDone = async () => {
+    if (!editing) return
+    if (!title.trim()) return
+    if (fromQuickId && !compartment) return
+
+    const doneSubtasks = subtasks.map((sub) => ({
+      ...sub,
+      status: 'Done',
+      nextAction: false
+    }))
+
+    const taskData = {
+      id: editing?.id,
+      title: title.trim(),
+      priority,
+      compartment,
+      status: 'Done',
+      size,
+      when,
+      note,
+      dueDate,
+      startDate,
+      hours,
+      timeAllocation,
+      flagged,
+      subtasks: doneSubtasks,
+      completion: 100,
+      fromQuickId
+    }
+
+    try {
+      await onSave(taskData)
+
+      try {
+        const confetti = await loadConfetti()
+        if (confetti) {
+          confetti({ particleCount: 90, spread: 65, origin: { y: 0.6 } })
+          confetti({ particleCount: 45, spread: 100, decay: 0.92, scalar: 0.8, origin: { y: 0.6 } })
+        }
+      } catch (confettiError) {
+        console.error('Erreur lors du lancement des confettis:', confettiError)
+      }
+    } catch (error) {
+      console.error('Erreur lors du marquage comme terminé:', error)
     }
   }
 
@@ -331,119 +390,121 @@ const TaskModal = ({
               </div>
             </div>
 
-            {/* Date Range Picker */}
-            <div>
-              <DateRangePicker
-                startDate={startDate}
-                endDate={dueDate}
-                onStartDateChange={setStartDate}
-                onEndDateChange={setDueDate}
-                disabled={loading}
-              />
-            </div>
-
-            {/* Hours and Time Allocation */}
-            <div className="grid grid-cols-2 gap-3">
+            {showSchedulingFields && (
               <div>
-                <label className="text-sm text-slate-600">Hours</label>
-                <input 
-                  type="number" 
-                  min="0" 
-                  step="0.5"
-                  value={hours} 
-                  onChange={(e) => setHours(e.target.value)} 
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                  placeholder="e.g. 8 or 2.5"
+                <DateRangePicker
+                  startDate={startDate}
+                  endDate={dueDate}
+                  onStartDateChange={setStartDate}
+                  onEndDateChange={setDueDate}
                   disabled={loading}
                 />
               </div>
-              <div>
-                <label className="text-sm text-slate-600">Time Allocation</label>
-                <div className="mt-1">
-                  <Select value={timeAllocation} onValueChange={setTimeAllocation}>
-                    <SelectTrigger className="w-full rounded-xl border border-slate-300 px-3 py-2">
-                      <span className="text-sm">
-                        {timeAllocation === "one shot" && "One Shot"}
-                        {timeAllocation === "per week" && "Per Week"}
-                        {timeAllocation === "per 2 weeks" && "Per 2 Weeks"}
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border border-slate-200">
-                      <SelectItem value="one shot">
-                        <span className="text-sm">One Shot</span>
-                      </SelectItem>
-                      <SelectItem value="per week">
-                        <span className="text-sm">Per Week</span>
-                      </SelectItem>
-                      <SelectItem value="per 2 weeks">
-                        <span className="text-sm">Per 2 Weeks</span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
+            )}
 
-            {/* Total Time, Weeks, and Risk Flag */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-600">Total Time:</span>
-                  <span className="text-sm font-medium text-slate-900 bg-slate-100 px-2 py-1 rounded">
-                    {(() => {
-                      const hoursValue = parseFloat(hours) || 0
-                      if (hoursValue === 0) return "Not specified"
-                      
-                      if (timeAllocation === "one shot") {
-                        return `${hoursValue}h`
-                      }
-                      
-                      // Calculate weeks between dates
-                      let weeks = 1
-                      if (startDate && dueDate) {
-                        const start = new Date(startDate)
-                        const due = new Date(dueDate)
-                        if (due >= start) {
-                          const diffTime = Math.abs(due - start)
-                          const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
-                          weeks = Math.max(1, diffWeeks)
-                        }
-                      }
-                      
-                      if (timeAllocation === "per week") {
-                        const totalHours = hoursValue * weeks
-                        return `${totalHours}h`
-                      }
-                      
-                      if (timeAllocation === "per 2 weeks") {
-                        const periods = Math.ceil(weeks / 2)
-                        const totalHours = hoursValue * periods
-                        return `${totalHours}h`
-                      }
-                      
-                      return `${hoursValue}h`
-                    })()}
-                  </span>
+            {showSchedulingFields && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm text-slate-600">Hours</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    step="0.5"
+                    value={hours} 
+                    onChange={(e) => setHours(e.target.value)} 
+                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                    placeholder="e.g. 8 or 2.5"
+                    disabled={loading}
+                  />
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-600">Duration:</span>
-                  <span className="text-sm font-medium text-slate-900 bg-slate-100 px-2 py-1 rounded">
-                    {(() => {
-                      if (startDate && dueDate) {
-                        const start = new Date(startDate)
-                        const due = new Date(dueDate)
-                        if (due >= start) {
-                          const diffTime = Math.abs(due - start)
-                          const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
-                          const weeks = Math.max(1, diffWeeks)
-                          return weeks === 1 ? "1 week" : `${weeks} weeks`
-                        }
-                      }
-                      return "Not specified"
-                    })()}
-                  </span>
+                <div>
+                  <label className="text-sm text-slate-600">Time Allocation</label>
+                  <div className="mt-1">
+                    <Select value={timeAllocation} onValueChange={setTimeAllocation}>
+                      <SelectTrigger className="w-full rounded-xl border border-slate-300 px-3 py-2">
+                        <span className="text-sm">
+                          {timeAllocation === "one shot" && "One Shot"}
+                          {timeAllocation === "per week" && "Per Week"}
+                          {timeAllocation === "per 2 weeks" && "Per 2 Weeks"}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border border-slate-200">
+                        <SelectItem value="one shot">
+                          <span className="text-sm">One Shot</span>
+                        </SelectItem>
+                        <SelectItem value="per week">
+                          <span className="text-sm">Per Week</span>
+                        </SelectItem>
+                        <SelectItem value="per 2 weeks">
+                          <span className="text-sm">Per 2 Weeks</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
+            )}
+
+            <div className={`flex ${showSchedulingFields ? 'items-center justify-between' : 'justify-end'} flex-wrap gap-4`}>
+              {showSchedulingFields && (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-600">Total Time:</span>
+                    <span className="text-sm font-medium text-slate-900 bg-slate-100 px-2 py-1 rounded">
+                      {(() => {
+                        const hoursValue = parseFloat(hours) || 0
+                        if (hoursValue === 0) return "Not specified"
+                        
+                        if (timeAllocation === "one shot") {
+                          return `${hoursValue}h`
+                        }
+                        
+                        let weeks = 1
+                        if (startDate && dueDate) {
+                          const start = new Date(startDate)
+                          const due = new Date(dueDate)
+                          if (due >= start) {
+                            const diffTime = Math.abs(due - start)
+                            const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
+                            weeks = Math.max(1, diffWeeks)
+                          }
+                        }
+                        
+                        if (timeAllocation === "per week") {
+                          const totalHours = hoursValue * weeks
+                          return `${totalHours}h`
+                        }
+                        
+                        if (timeAllocation === "per 2 weeks") {
+                          const periods = Math.ceil(weeks / 2)
+                          const totalHours = hoursValue * periods
+                          return `${totalHours}h`
+                        }
+                        
+                        return `${hoursValue}h`
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-600">Duration:</span>
+                    <span className="text-sm font-medium text-slate-900 bg-slate-100 px-2 py-1 rounded">
+                      {(() => {
+                        if (startDate && dueDate) {
+                          const start = new Date(startDate)
+                          const due = new Date(dueDate)
+                          if (due >= start) {
+                            const diffTime = Math.abs(due - start)
+                            const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
+                            const weeks = Math.max(1, diffWeeks)
+                            return weeks === 1 ? "1 week" : `${weeks} weeks`
+                          }
+                        }
+                        return "Not specified"
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              )}
               <label className="inline-flex items-center gap-2 text-sm">
                 <input 
                   type="checkbox" 
@@ -594,6 +655,18 @@ const TaskModal = ({
                 Delete
               </button>
             )}
+            {editing && (
+              <button
+                type="button"
+                onClick={handleMarkAsDone}
+                className="px-3 py-2 rounded-xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:hover:bg-transparent flex items-center gap-2"
+                disabled={isActionDisabled}
+                title="Complete this task"
+              >
+                <Check className="h-4 w-4" />
+                Mark as done
+              </button>
+            )}
             <button 
               type="button" 
               onClick={onClose} 
@@ -604,7 +677,7 @@ const TaskModal = ({
             <button 
               type="submit" 
               className="px-3 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
-              disabled={loading || !title.trim() || (fromQuickId && !compartment)}
+              disabled={isActionDisabled}
             >
               {editing ? "Save" : "Create"}
             </button>
