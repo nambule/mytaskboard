@@ -34,13 +34,77 @@ import {
 import { useCompartments } from './hooks/useCompartments'
 import { badgeStyle, compStyle, styleWhen } from './utils/helpers'
 
+const SESSION_PREFERENCES_KEY = 'kanban-session-preferences'
+const DEFAULT_PRIORITY_FILTER = {
+  P1: true,
+  P2: true,
+  P3: true,
+  P4: true,
+  P5: true,
+}
+const DEFAULT_STATUS_FILTER = {
+  'To Do': true,
+  'To Analyze': true,
+  'In Progress': true,
+  Done: false,
+  Cancelled: false,
+}
+
+const restoreBooleanFilter = (savedFilter, defaultFilter) => (
+  Object.fromEntries(
+    Object.entries(defaultFilter).map(([key, defaultValue]) => [
+      key,
+      typeof savedFilter?.[key] === 'boolean' ? savedFilter[key] : defaultValue,
+    ]),
+  )
+)
+
+const loadSessionPreferences = () => {
+  const defaults = {
+    groupBy: 'compartment',
+    viewMode: 'full',
+    search: '',
+    priorityFilter: DEFAULT_PRIORITY_FILTER,
+    statusFilterState: DEFAULT_STATUS_FILTER,
+    nextActionFilter: 'All',
+    sortBy: 'none',
+  }
+
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(SESSION_PREFERENCES_KEY) || '{}')
+
+    return {
+      groupBy: ['compartment', 'priority', 'status'].includes(saved.groupBy)
+        ? saved.groupBy
+        : defaults.groupBy,
+      viewMode: ['compact', 'standard', 'full'].includes(saved.viewMode)
+        ? saved.viewMode
+        : defaults.viewMode,
+      search: typeof saved.search === 'string' ? saved.search : defaults.search,
+      priorityFilter: restoreBooleanFilter(saved.priorityFilter, DEFAULT_PRIORITY_FILTER),
+      statusFilterState: restoreBooleanFilter(saved.statusFilterState, DEFAULT_STATUS_FILTER),
+      nextActionFilter: ['All', ...WHEN_OPTIONS].includes(saved.nextActionFilter)
+        ? saved.nextActionFilter
+        : defaults.nextActionFilter,
+      sortBy: ['none', 'priorityAsc', 'priorityDesc', 'whenAsc', 'whenDesc'].includes(saved.sortBy)
+        ? saved.sortBy
+        : defaults.sortBy,
+    }
+  } catch (error) {
+    console.warn('Unable to restore session preferences:', error)
+    return defaults
+  }
+}
+
 /**
  * Application My Task Board principale avec intégration Supabase
  */
 function App() {
+  const sessionPreferences = useMemo(loadSessionPreferences, [])
+
   // État local de l'interface
-  const [groupBy, setGroupBy] = useState("compartment")
-  const [viewMode, setViewMode] = useState("full")
+  const [groupBy, setGroupBy] = useState(sessionPreferences.groupBy)
+  const [viewMode, setViewMode] = useState(sessionPreferences.viewMode)
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('kanban-dark-mode')
     return saved ? JSON.parse(saved) : false
@@ -50,15 +114,11 @@ function App() {
     return saved ? JSON.parse(saved) : false
   })
   const { compartments: compartmentObjects, compartmentNames } = useCompartments()
-  const [search, setSearch] = useState("")
-  const [priorityFilter, setPriorityFilter] = useState({ 
-    P1: true, P2: true, P3: true, P4: true, P5: true 
-  })
-  const [statusFilterState, setStatusFilterState] = useState({ 
-    "To Do": true, "To Analyze": true, "In Progress": true, "Done": false, "Cancelled": false 
-  })
-  const [nextActionFilter, setNextActionFilter] = useState("All")
-  const [sortBy, setSortBy] = useState("none")
+  const [search, setSearch] = useState(sessionPreferences.search)
+  const [priorityFilter, setPriorityFilter] = useState(sessionPreferences.priorityFilter)
+  const [statusFilterState, setStatusFilterState] = useState(sessionPreferences.statusFilterState)
+  const [nextActionFilter, setNextActionFilter] = useState(sessionPreferences.nextActionFilter)
+  const [sortBy, setSortBy] = useState(sessionPreferences.sortBy)
   const [modal, setModal] = useState({ 
     open: false, editingId: null, initialColumn: null, prefillTitle: "", fromQuickId: null 
   })
@@ -79,6 +139,30 @@ function App() {
   useEffect(() => {
     localStorage.setItem('kanban-show-scheduling-fields', JSON.stringify(showSchedulingFields))
   }, [showSchedulingFields])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(SESSION_PREFERENCES_KEY, JSON.stringify({
+        groupBy,
+        viewMode,
+        search,
+        priorityFilter,
+        statusFilterState,
+        nextActionFilter,
+        sortBy,
+      }))
+    } catch (error) {
+      console.warn('Unable to save session preferences:', error)
+    }
+  }, [
+    groupBy,
+    viewMode,
+    search,
+    priorityFilter,
+    statusFilterState,
+    nextActionFilter,
+    sortBy,
+  ])
 
 
   // Hook d'authentification
