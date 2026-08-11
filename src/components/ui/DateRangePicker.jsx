@@ -13,11 +13,11 @@ const DateRangePicker = ({ startDate, endDate, onStartDateChange, onEndDateChang
   const pickerRef = useRef(null)
 
   const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
   ]
 
-  const weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const weekdays = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -283,7 +283,7 @@ const DateRangePicker = ({ startDate, endDate, onStartDateChange, onEndDateChang
       {/* Two Input Fields */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm text-slate-600 mb-1">Start Date</label>
+          <label className="block text-sm text-slate-600 mb-1">Début</label>
           <button
             type="button"
             onClick={() => !disabled && openCalendar('start')}
@@ -297,12 +297,12 @@ const DateRangePicker = ({ startDate, endDate, onStartDateChange, onEndDateChang
             disabled={disabled}
           >
             <Calendar className="h-4 w-4 text-slate-400" />
-            <span>{startDate ? formatDateShort(startDate) : 'Add date'}</span>
+            <span>{startDate ? formatDateShort(startDate) : 'Ajouter'}</span>
           </button>
         </div>
         
         <div>
-          <label className="block text-sm text-slate-600 mb-1">End Date</label>
+          <label className="block text-sm text-slate-600 mb-1">Fin</label>
           <button
             type="button"
             onClick={() => !disabled && openCalendar('end')}
@@ -316,14 +316,14 @@ const DateRangePicker = ({ startDate, endDate, onStartDateChange, onEndDateChang
             disabled={disabled}
           >
             <Calendar className="h-4 w-4 text-slate-400" />
-            <span>{endDate ? formatDateShort(endDate) : 'Add date'}</span>
+            <span>{endDate ? formatDateShort(endDate) : 'Ajouter'}</span>
           </button>
         </div>
       </div>
 
       {/* Calendar Popup */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl p-4 z-50 w-[480px]">
+        <div className="absolute left-0 top-full z-50 mt-2 w-[min(480px,calc(100vw-3rem))] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
           {/* Navigation Header */}
           <div className="flex items-center justify-between mb-4">
             <button
@@ -335,7 +335,7 @@ const DateRangePicker = ({ startDate, endDate, onStartDateChange, onEndDateChang
             </button>
             
             <div className="text-xs text-slate-600">
-              Editing: <span className="font-medium">{activeField === 'start' ? 'Start Date' : 'End Date'}</span>
+              Modification : <span className="font-medium">{activeField === 'start' ? 'début' : 'fin'}</span>
             </div>
             
             <button
@@ -350,7 +350,7 @@ const DateRangePicker = ({ startDate, endDate, onStartDateChange, onEndDateChang
           {/* Two Month View */}
           <div className="flex gap-6">
             {renderCalendarMonth(currentMonth)}
-            {renderCalendarMonth(getNextMonth(currentMonth))}
+            <div className="hidden sm:block">{renderCalendarMonth(getNextMonth(currentMonth))}</div>
           </div>
 
           {/* Footer */}
@@ -359,9 +359,9 @@ const DateRangePicker = ({ startDate, endDate, onStartDateChange, onEndDateChang
               {startDate && endDate ? (
                 <span>{formatDate(startDate)} - {formatDate(endDate)}</span>
               ) : activeField === 'start' ? (
-                'Select start date'
+                'Sélectionnez la date de début'
               ) : (
-                'Select end date'
+                'Sélectionnez la date de fin'
               )}
             </div>
             
@@ -375,7 +375,7 @@ const DateRangePicker = ({ startDate, endDate, onStartDateChange, onEndDateChang
                   }}
                   className="text-xs text-slate-500 hover:text-slate-700 underline"
                 >
-                  Clear dates
+                  Effacer
                 </button>
               )}
               <button
@@ -383,7 +383,7 @@ const DateRangePicker = ({ startDate, endDate, onStartDateChange, onEndDateChang
                 onClick={() => setIsOpen(false)}
                 className="px-3 py-1.5 text-xs bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
               >
-                Done
+                Terminé
               </button>
             </div>
           </div>

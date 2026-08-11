@@ -2,6 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color: #172033;
+  background: #f6f7f9;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-synthesis: none;
+}
+
+html {
+  background: #f6f7f9;
+}
+
+html.dark {
+  color: #e7eaf0;
+  background: #111827;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: 'Manrope', 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:where(button, input, select, textarea, summary, [role='button']):focus-visible {
+  outline: 3px solid rgba(53, 106, 230, 0.28);
+  outline-offset: 2px;
+}
+
+.scrollbar-subtle {
+  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-width: thin;
+}
+
+.surface-shadow {
+  box-shadow: 0 14px 38px rgba(23, 32, 51, 0.08);
+}
+
+.dark .surface-shadow {
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+}
+
+.dark .app-modal :where(label, .text-slate-600) {
+  color: #cbd5e1;
+}
+
+.dark .app-modal :where(input, select, textarea) {
+  color: #f8fafc;
+  background-color: #1e293b;
+  border-color: #475569;
+}
+
+.dark .app-modal :where(.bg-white) {
+  background-color: #1e293b;
+}
+
+.dark .app-modal :where(.border-slate-200, .border-slate-300) {
+  border-color: #475569;
+}
+
+.board-grid {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .board-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--board-columns), minmax(260px, 1fr));
+    min-width: calc(var(--board-columns) * 260px + (var(--board-columns) - 1) * 16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Custom styling for completion gauge slider */
 .slider::-webkit-slider-thumb {
   appearance: none;

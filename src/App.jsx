@@ -1,15 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { DragDropContext, Droppable } from '@hello-pangea/dnd'
-import {
-  Plus,
-  Search,
-  Filter as FilterIcon,
-  ChevronDown,
-  Eye,
-  Moon,
-  Sun,
-  MessageCircle
-} from 'lucide-react'
+import { Plus, MessageCircle } from 'lucide-react'
 
 import { useTasks } from './hooks/useTasks'
 import { useQuickTasks } from './hooks/useQuickTasks'
@@ -19,6 +10,9 @@ import TaskModal from './components/TaskModal'
 import QuickTasksModal from './components/QuickTasksModal'
 import AuthModal from './components/AuthModal'
 import AccountMenu from './components/AccountMenu'
+import LandingScreen from './components/LandingScreen'
+import BoardToolbar from './components/BoardToolbar'
+import StickyBoardScrollbar from './components/StickyBoardScrollbar'
 
 import {
   PRIORITIES,
@@ -29,7 +23,9 @@ import {
   STATUS_COLORS,
   COMPARTMENT_COLORS,
   WHEN_ORDER,
-  PRIORITY_RANK
+  PRIORITY_RANK,
+  STATUS_LABELS,
+  WHEN_LABELS,
 } from './utils/constants'
 import { useCompartments } from './hooks/useCompartments'
 import { badgeStyle, compStyle, styleWhen } from './utils/helpers'
@@ -48,6 +44,20 @@ const DEFAULT_STATUS_FILTER = {
   'In Progress': true,
   Done: false,
   Cancelled: false,
+}
+const PRIORITY_COLUMN_COLORS = {
+  P1: { bg: '#FEE2E2', text: '#991B1B', border: '#FECACA' },
+  P2: { bg: '#FFEDD5', text: '#9A3412', border: '#FED7AA' },
+  P3: { bg: '#FEF3C7', text: '#92400E', border: '#FDE68A' },
+  P4: { bg: '#DCFCE7', text: '#166534', border: '#BBF7D0' },
+  P5: { bg: '#DBEAFE', text: '#1E40AF', border: '#BFDBFE' },
+}
+const STATUS_COLUMN_COLORS = {
+  'To Do': STATUS_COLORS['To Do'],
+  'To Analyze': STATUS_COLORS['To Analyze'],
+  'In Progress': STATUS_COLORS['In Progress'],
+  Done: STATUS_COLORS.Done,
+  Cancelled: STATUS_COLORS.Cancelled,
 }
 
 const restoreBooleanFilter = (savedFilter, defaultFilter) => (
@@ -119,6 +129,7 @@ function App() {
   const [statusFilterState, setStatusFilterState] = useState(sessionPreferences.statusFilterState)
   const [nextActionFilter, setNextActionFilter] = useState(sessionPreferences.nextActionFilter)
   const [sortBy, setSortBy] = useState(sessionPreferences.sortBy)
+  const [activeMobileColumn, setActiveMobileColumn] = useState(null)
   const [modal, setModal] = useState({ 
     open: false, editingId: null, initialColumn: null, prefillTitle: "", fromQuickId: null 
   })
@@ -199,6 +210,7 @@ function App() {
   // Référence pour fermer les filtres et menu visualisation
   const filterRef = useRef(null)
   const viewRef = useRef(null)
+  const boardScrollRef = useRef(null)
 
   // Fermer les filtres et menu visualisation au clic extérieur ou Escape
   useEffect(() => {
@@ -324,6 +336,51 @@ function App() {
     return cols
   }, [columns, groupBy, statusFilterState, visibleIdsByColumn])
 
+  useEffect(() => {
+    if (!displayedColumns.includes(activeMobileColumn)) {
+      setActiveMobileColumn(displayedColumns[0] || null)
+    }
+  }, [activeMobileColumn, displayedColumns])
+
+  const activeFilters = useMemo(() => {
+    const filters = []
+
+    PRIORITIES.forEach((priority) => {
+      if (!priorityFilter[priority]) {
+        filters.push({
+          key: `priority-${priority}`,
+          label: `Sans ${priority}`,
+          onRemove: () => setPriorityFilter((current) => ({ ...current, [priority]: true })),
+        })
+      }
+    })
+
+    STATUSES.forEach((status) => {
+      if (statusFilterState[status] !== DEFAULT_STATUS_FILTER[status]) {
+        filters.push({
+          key: `status-${status}`,
+          label: statusFilterState[status]
+            ? `Inclut ${STATUS_LABELS[status].toLowerCase()}`
+            : `Sans ${STATUS_LABELS[status].toLowerCase()}`,
+          onRemove: () => setStatusFilterState((current) => ({
+            ...current,
+            [status]: DEFAULT_STATUS_FILTER[status],
+          })),
+        })
+      }
+    })
+
+    if (nextActionFilter !== 'All') {
+      filters.push({
+        key: 'next-action',
+        label: `Échéance : ${WHEN_LABELS[nextActionFilter]}`,
+        onRemove: () => setNextActionFilter('All'),
+      })
+    }
+
+    return filters
+  }, [priorityFilter, statusFilterState, nextActionFilter])
+
   // Check if all compartments are empty (no tasks at all)
   const hasAnyTasks = Object.keys(tasks).length > 0
   const allColumnsEmpty = displayedColumns.every(col => (visibleIdsByColumn[col]?.length || 0) === 0)
@@ -403,9 +460,9 @@ function App() {
 
   // Réinitialiser les filtres
   const resetFilters = () => {
-    setPriorityFilter({ P1: true, P2: true, P3: true, P4: true, P5: true })
-    setStatusFilterState({ "To Do": true, "To Analyze": true, "In Progress": true, "Done": false, "Cancelled": false })
-    setNextActionFilter("All")
+    setPriorityFilter({ ...DEFAULT_PRIORITY_FILTER })
+    setStatusFilterState({ ...DEFAULT_STATUS_FILTER })
+    setNextActionFilter('All')
   }
 
   // Affichage du chargement de l'authentification
@@ -418,7 +475,7 @@ function App() {
             <div className="w-8 h-8 border-4 border-transparent border-t-blue-500 rounded-full animate-spin absolute top-2 left-2" style={{animationDuration: '0.8s'}}></div>
           </div>
           <div className="text-slate-600 dark:text-slate-400 text-sm">
-            Connecting<span className="animate-pulse">...</span>
+            Connexion sécurisée<span className="animate-pulse">…</span>
           </div>
         </div>
       </div>
@@ -427,6 +484,35 @@ function App() {
 
   // Redirection vers l'authentification si pas connecté
   if (!isAuthenticated) {
+    return (
+      <>
+        <LandingScreen
+          darkMode={darkMode}
+          onToggleDarkMode={() => setDarkMode((current) => !current)}
+          onSignIn={() => {
+            setAuthMode('signin')
+            setAuthOpen(true)
+          }}
+          onSignUp={() => {
+            setAuthMode('signup')
+            setAuthOpen(true)
+          }}
+        />
+        {authOpen && (
+          <AuthModal
+            onClose={() => setAuthOpen(false)}
+            onSignIn={signIn}
+            onSignUp={signUp}
+            loading={authLoading}
+            error={authError}
+            defaultMode={authMode}
+          />
+        )}
+      </>
+    )
+
+    /* Legacy landing kept temporarily for compatibility while the new surface is validated. */
+    /* eslint-disable no-unreachable */
     return (
       <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
         <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
@@ -578,7 +664,7 @@ function App() {
             <div className="w-4 h-4 bg-purple-500 rounded-full animate-pulse absolute top-6 left-6"></div>
           </div>
           <div className="text-slate-600 dark:text-slate-400 text-sm font-medium">
-            Loading your tasks<span className="animate-pulse">...</span>
+            Préparation de votre tableau<span className="animate-pulse">…</span>
           </div>
           <div className="flex gap-1">
             <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
@@ -593,18 +679,58 @@ function App() {
   // Affichage des erreurs
   if (tasksError || quickError) {
     return (
-      <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="text-red-600 dark:text-red-400">
-          Error: {tasksError || quickError}
+      <div className="flex min-h-screen w-full items-center justify-center bg-slate-50 p-6 dark:bg-slate-900">
+        <div className="max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm dark:border-red-900 dark:bg-slate-800">
+          <h1 className="font-display text-lg font-bold text-slate-900 dark:text-white">Le tableau ne peut pas être chargé</h1>
+          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{tasksError || quickError}</p>
+          <button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-xl bg-[#172033] px-4 py-2 text-sm font-semibold text-white dark:bg-[#356AE6]">
+            Réessayer
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 transition-colors">
+    <div className="min-h-screen w-full bg-[#F6F7F9] text-[#172033] transition-colors dark:bg-slate-950 dark:text-slate-100">
+      <BoardToolbar
+        user={user}
+        search={search}
+        onSearchChange={setSearch}
+        priorityFilter={priorityFilter}
+        onPriorityFilterChange={(priority) => setPriorityFilter((current) => ({
+          ...current,
+          [priority]: !current[priority],
+        }))}
+        statusFilter={statusFilterState}
+        onStatusFilterChange={(status) => setStatusFilterState((current) => ({
+          ...current,
+          [status]: !current[status],
+        }))}
+        nextActionFilter={nextActionFilter}
+        onNextActionFilterChange={setNextActionFilter}
+        onResetFilters={resetFilters}
+        activeFilterCount={activeFilters.length}
+        activeFilters={activeFilters}
+        groupBy={groupBy}
+        onGroupByChange={setGroupBy}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode((current) => !current)}
+        quickTaskCount={quickTasks.length}
+        onOpenQuickTasks={() => setQuickOpen(true)}
+        onSignOut={signOut}
+        showSchedulingFields={showSchedulingFields}
+        onToggleSchedulingFields={setShowSchedulingFields}
+        filterRef={filterRef}
+        viewRef={viewRef}
+      />
+
       {/* Barre supérieure */}
-      <header className="sticky top-0 z-20 backdrop-blur bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-700">
+      {false && (<header className="sticky top-0 z-20 backdrop-blur bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
           <div className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">My Task Board</div>
 
@@ -810,49 +936,85 @@ Quick Task
             />
           </div>
         </div>
-      </header>
+      </header>)}
 
       {/* Tableau des tâches */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6">
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1 md:hidden" role="tablist" aria-label="Colonnes du tableau">
+          {displayedColumns.map((column) => (
+            <button
+              key={column}
+              type="button"
+              role="tab"
+              aria-selected={activeMobileColumn === column}
+              onClick={() => setActiveMobileColumn(column)}
+              className={`shrink-0 rounded-full px-3 py-2 text-xs font-semibold transition-colors ${
+                activeMobileColumn === column
+                  ? 'bg-[#172033] text-white dark:bg-[#356AE6]'
+                  : 'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+              }`}
+            >
+              {groupBy === 'status' ? STATUS_LABELS[column] : column}
+              <span className="ml-1.5 opacity-60">{visibleIdsByColumn[column]?.length || 0}</span>
+            </button>
+          ))}
+        </div>
+
         <DragDropContext onDragEnd={onDragEnd}>
-          <div 
-            className="grid gap-4" 
-            style={{ gridTemplateColumns: `repeat(${displayedColumns.length}, minmax(220px, 1fr))` }}
+          <div ref={boardScrollRef} className="board-scroll scrollbar-subtle overflow-x-auto pb-3">
+          <div
+            className="board-grid gap-4"
+            style={{ '--board-columns': displayedColumns.length }}
           >
             {displayedColumns.map((col) => (
-              <div key={col} className="flex flex-col">
-                <div className="mb-2 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm bg-white dark:bg-slate-800">
+              <div
+                key={col}
+                role="tabpanel"
+                className={`${activeMobileColumn === col ? 'flex' : 'hidden'} min-w-0 flex-col md:flex`}
+              >
+                <div className="mb-2 min-w-0">
                   {/* En-tête de colonne */}
                   <div 
-                    className="flex items-center justify-between px-2 py-1.5" 
-                    style={groupBy === 'compartment' 
-                      ? (() => {
+                    className="mb-2 flex items-center justify-between rounded-xl border px-3 py-3"
+                    style={(() => {
+                      if (groupBy === 'compartment') {
                           const compartmentObj = compartmentObjects.find(c => c.name === col)
-                          if (compartmentObj && compartmentObj.color_bg) {
-                            return compStyle({
-                              bg: compartmentObj.color_bg,
-                              text: compartmentObj.color_text,
-                              border: compartmentObj.color_border
-                            })
+                          const colors = {
+                            bg: compartmentObj?.color_bg || COMPARTMENT_COLORS[col]?.bg || '#DBEAFE',
+                            text: compartmentObj?.color_text || COMPARTMENT_COLORS[col]?.text || '#1E40AF',
+                            border: compartmentObj?.color_border || COMPARTMENT_COLORS[col]?.border || '#BFDBFE',
                           }
-                          return compStyle(COMPARTMENT_COLORS[col] || COMPARTMENT_COLORS.PM)
-                        })()
-                      : undefined
-                    }
+                          return {
+                            backgroundColor: colors.bg,
+                            color: colors.text,
+                            borderColor: colors.border,
+                          }
+                      }
+
+                      const colors = groupBy === 'priority'
+                          ? PRIORITY_COLUMN_COLORS[col]
+                          : STATUS_COLUMN_COLORS[col]
+                      return {
+                        backgroundColor: colors.bg,
+                        color: colors.text,
+                        borderColor: colors.border,
+                      }
+                    })()}
                   >
                     <div className="flex items-center gap-2">
-                      <div className={`font-semibold ${groupBy === 'compartment' ? '' : 'text-slate-700 dark:text-slate-300'}`}>
-                        {col}
+                      <div className="font-display text-sm font-bold text-current">
+                        {groupBy === 'status' ? STATUS_LABELS[col] : col}
                       </div>
-                      <span className={`text-xs ${groupBy === 'compartment' ? 'opacity-70' : 'text-slate-400 dark:text-slate-500'}`}>
+                      <span className="rounded-full bg-white/60 px-2 py-0.5 text-[11px] font-semibold text-current shadow-sm">
                         {visibleIdsByColumn[col]?.length || 0}
                       </span>
                     </div>
                     <button 
                       onClick={() => openCreate(col)} 
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white transition-colors"
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-current transition-colors hover:bg-white/50"
+                      aria-label={`Ajouter une tâche dans ${groupBy === 'status' ? STATUS_LABELS[col] : col}`}
                     >
-                      <Plus className="h-4 w-4" /> Add
+                      <Plus className="h-4 w-4" /> Ajouter
                     </button>
                   </div>
 
@@ -862,8 +1024,8 @@ Quick Task
                       <div 
                         ref={provided.innerRef} 
                         {...provided.droppableProps}
-                        className={`min-h-[120px] p-2 relative ${
-                          snapshot.isDraggingOver ? 'bg-slate-100 dark:bg-slate-700' : 'bg-white dark:bg-slate-800'
+                        className={`relative min-h-[180px] rounded-2xl border border-slate-200 p-2.5 transition-colors dark:border-slate-700 ${
+                          snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-950/40' : 'bg-slate-100/70 dark:bg-slate-900/60'
                         }`}
                         style={{ overflow: 'visible' }}
                       >
@@ -887,7 +1049,13 @@ Quick Task
               </div>
             ))}
           </div>
+          </div>
         </DragDropContext>
+
+        <StickyBoardScrollbar
+          targetRef={boardScrollRef}
+          contentKey={`${groupBy}-${displayedColumns.length}`}
+        />
 
         {/* Empty State Guide - shown when no tasks exist */}
         {!hasAnyTasks && (
@@ -895,10 +1063,10 @@ Quick Task
             <div className="max-w-2xl mx-auto bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 shadow-sm">
               <div className="mb-6">
                 <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-3">
-                  Welcome to My Task Board! 🎯
+                  Votre tableau est prêt.
                 </h3>
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Get started by creating your first task. Here's how the board works:
+                  Créez une première tâche, puis organisez-la au rythme de votre travail.
                 </p>
               </div>
               
@@ -909,9 +1077,9 @@ Quick Task
                       <span className="text-blue-600 dark:text-blue-400 text-sm font-semibold">1</span>
                     </div>
                     <div>
-                      <h4 className="font-medium text-slate-900 dark:text-white mb-1">Create Tasks</h4>
+                      <h4 className="font-medium text-slate-900 dark:text-white mb-1">Créer une tâche</h4>
                       <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Click the <strong>"Add"</strong> button in any compartment to create a new task
+                        Utilisez <strong>Ajouter</strong> dans la colonne qui correspond à votre besoin.
                       </p>
                     </div>
                   </div>
@@ -921,9 +1089,9 @@ Quick Task
                       <span className="text-green-600 dark:text-green-400 text-sm font-semibold">2</span>
                     </div>
                     <div>
-                      <h4 className="font-medium text-slate-900 dark:text-white mb-1">Organize</h4>
+                      <h4 className="font-medium text-slate-900 dark:text-white mb-1">Organiser</h4>
                       <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Drag and drop tasks between compartments and set priorities
+                        Déplacez les tâches entre les colonnes et ajustez leur priorité.
                       </p>
                     </div>
                   </div>
@@ -933,9 +1101,9 @@ Quick Task
                       <span className="text-cyan-600 dark:text-cyan-400 text-sm font-semibold">3</span>
                     </div>
                     <div>
-                      <h4 className="font-medium text-slate-900 dark:text-white mb-1">Manage Compartments</h4>
+                      <h4 className="font-medium text-slate-900 dark:text-white mb-1">Adapter les compartiments</h4>
                       <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Click your profile menu → <strong>"Settings"</strong> to customize compartment names and colors
+                        Ouvrez votre profil puis <strong>Paramètres</strong> pour personnaliser les noms et couleurs.
                       </p>
                     </div>
                   </div>
@@ -947,9 +1115,9 @@ Quick Task
                       <span className="text-purple-600 dark:text-purple-400 text-sm font-semibold">4</span>
                     </div>
                     <div>
-                      <h4 className="font-medium text-slate-900 dark:text-white mb-1">Track Progress</h4>
+                      <h4 className="font-medium text-slate-900 dark:text-white mb-1">Suivre l’avancement</h4>
                       <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Use different compartments to organize work by team, project, or workflow stage
+                        Utilisez la progression et les sous-tâches pour garder une vue juste du travail restant.
                       </p>
                     </div>
                   </div>
@@ -959,9 +1127,9 @@ Quick Task
                       <span className="text-orange-600 dark:text-orange-400 text-sm font-semibold">5</span>
                     </div>
                     <div>
-                      <h4 className="font-medium text-slate-900 dark:text-white mb-1">Quick Tasks</h4>
+                      <h4 className="font-medium text-slate-900 dark:text-white mb-1">Collecter rapidement</h4>
                       <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Use <strong>"Quick Task"</strong> for rapid idea capture, then organize later
+                        Capturez une idée dans <strong>Collecte rapide</strong>, puis classez-la plus tard.
                       </p>
                     </div>
                   </div>
@@ -970,14 +1138,14 @@ Quick Task
               
               <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                  💡 <strong>Tip:</strong> You can group tasks by Compartment, Priority, or Status using the dropdown above
+                  Astuce : utilisez <strong>Affichage</strong> pour regrouper le tableau par compartiment, priorité ou statut.
                 </p>
                 <button 
                   onClick={() => openCreate(displayedColumns[0])} 
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-700 text-white hover:bg-slate-800 dark:hover:bg-slate-600 font-medium transition-colors"
                 >
                   <Plus className="h-4 w-4" />
-                  Create Your First Task
+                      Créer ma première tâche
                 </button>
               </div>
             </div>
@@ -1019,11 +1187,12 @@ Quick Task
       <button
         onClick={() => window.open('https://forms.gle/kYEEkbSznQYqZunu7', '_blank', 'noopener,noreferrer')}
         className="fixed bottom-6 right-6 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-30 group"
-        title="Give Feedback"
+        title="Donner mon avis"
+        aria-label="Donner mon avis"
       >
         <MessageCircle className="w-5 h-5" />
         <span className="absolute right-14 bottom-3 bg-slate-900 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-          Give Feedback
+          Donner mon avis
         </span>
       </button>
     </div>

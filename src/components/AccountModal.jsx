@@ -10,8 +10,8 @@ const AccountModal = ({ onClose, user }) => {
     return (
       <div className="fixed inset-0 z-[9999] bg-black/50 p-4 flex items-center justify-center">
         <div className="bg-white rounded-xl p-6 text-center">
-          <p>Loading user information...</p>
-          <button onClick={onClose} className="mt-4 px-4 py-2 bg-slate-200 rounded">Close</button>
+          <p>Chargement du compte…</p>
+          <button onClick={onClose} className="mt-4 px-4 py-2 bg-slate-200 rounded">Fermer</button>
         </div>
       </div>
     )
@@ -41,22 +41,23 @@ const AccountModal = ({ onClose, user }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] bg-black/50 p-4"
+      className="fixed inset-0 z-[9999] bg-slate-950/60 p-4 backdrop-blur-sm"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
       tabIndex={-1}
     >
       <div className="min-h-full flex items-center justify-center py-12">
-        <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+        <div role="dialog" aria-modal="true" aria-labelledby="account-title" className="app-modal w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-slate-600" />
-            <h2 className="font-semibold text-lg">My Account</h2>
+            <h2 id="account-title" className="font-display text-lg font-bold dark:text-white">Mon compte</h2>
           </div>
           <button 
             onClick={onClose} 
             className="text-slate-400 hover:text-slate-600"
+            aria-label="Fermer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -70,7 +71,7 @@ const AccountModal = ({ onClose, user }) => {
             </div>
             <div className="flex-1">
               <div className="font-medium text-slate-900">
-                {user?.email?.split('@')[0] || 'User'}
+                {user?.email?.split('@')[0] || 'Utilisateur'}
               </div>
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Mail className="w-4 h-4" />
@@ -81,16 +82,16 @@ const AccountModal = ({ onClose, user }) => {
 
           {/* Informations du compte */}
           <div className="space-y-3">
-            <h3 className="font-medium text-slate-900">Account Information</h3>
+            <h3 className="font-medium text-slate-900 dark:text-white">Informations du compte</h3>
             <div className="bg-slate-50 rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Email:</span>
-                <span className="font-medium break-all">{user?.email || 'Not available'}</span>
+                <span className="text-slate-600">E-mail :</span>
+                <span className="font-medium break-all">{user?.email || 'Indisponible'}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Joined:</span>
+                <span className="text-slate-600">Inscription :</span>
                 <span className="font-medium">
-                  {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US') : 'Recently'}
+                  {user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : 'Récemment'}
                 </span>
               </div>
             </div>
@@ -104,7 +105,7 @@ const AccountModal = ({ onClose, user }) => {
             onClick={onClose}
             className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
           >
-            Close
+            Fermer
           </button>
         </div>
         </div>

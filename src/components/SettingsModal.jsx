@@ -38,7 +38,7 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
   const handleAddCompartment = async () => {
     if (!newCompartment.trim()) return
     if (compartments.some(comp => comp.name === newCompartment.trim())) {
-      alert('This compartment already exists')
+      alert('Ce compartiment existe déjà.')
       return
     }
     
@@ -48,7 +48,7 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
       setNewCompartment('')
       setHasChanges(true)
     } catch (err) {
-      alert(`Error creating compartment: ${err.message}`)
+      alert(`Impossible de créer le compartiment : ${err.message}`)
     } finally {
       setActionLoading(false)
     }
@@ -57,11 +57,11 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
   // Delete compartment
   const handleDeleteCompartment = async (compartmentToDelete) => {
     if (compartments.length <= 1) {
-      alert('You must have at least one compartment')
+      alert('Vous devez conserver au moins un compartiment.')
       return
     }
     
-    if (confirm(`Are you sure you want to delete "${compartmentToDelete.name}"?\nAll tasks in this compartment will need to be reassigned.`)) {
+    if (confirm(`Supprimer « ${compartmentToDelete.name} » ?\nLes tâches associées devront être réaffectées.`)) {
       setActionLoading(true)
       try {
         await deleteCompartment(compartmentToDelete.id)
@@ -222,10 +222,11 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Settings</h2>
+          <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">Paramètres</h2>
           <button
             onClick={handleClose}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            aria-label="Fermer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -236,7 +237,7 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4">
-                Display Options
+                Options d’affichage
               </h3>
               <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/40">
                 <input
@@ -247,10 +248,10 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
                 />
                 <div>
                   <div className="text-sm font-medium text-slate-900 dark:text-white">
-                    Scheduling fields
+                    Champs de planification
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-300">
-                    Show start/end dates, time allocation, and workload summary in the task modal.
+                    Afficher les dates, la répartition du temps et la synthèse de charge dans la tâche.
                   </p>
                 </div>
               </label>
@@ -259,7 +260,7 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
             {/* Compartments Management */}
             <div>
               <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4">
-                Manage Compartments
+                Gérer les compartiments
               </h3>
               
               {/* Add new compartment */}
@@ -269,7 +270,7 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
                   value={newCompartment}
                   onChange={(e) => setNewCompartment(e.target.value)}
                   onKeyDown={handleNewCompartmentKeyDown}
-                  placeholder="Add new compartment..."
+                  placeholder="Nouveau compartiment…"
                   disabled={actionLoading}
                   className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 />
@@ -279,21 +280,21 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 text-white rounded-lg transition-colors flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
-                  Add
+                  Ajouter
                 </button>
               </div>
 
               {/* Loading state */}
               {loading && (
                 <div className="flex items-center justify-center py-8">
-                  <div className="text-slate-600 dark:text-slate-400">Loading compartments...</div>
+                  <div className="text-slate-600 dark:text-slate-400">Chargement des compartiments…</div>
                 </div>
               )}
 
               {/* Error state */}
               {error && (
                 <div className="p-3 mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
-                  Error: {error}
+                  Erreur : {error}
                 </div>
               )}
 
@@ -366,14 +367,14 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
                           <button
                             onClick={handleSaveEdit}
                             className="p-1 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-                            title="Save"
+                            title="Enregistrer"
                           >
                             ✓
                           </button>
                           <button
                             onClick={handleCancelEdit}
                             className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                            title="Cancel"
+                            title="Annuler"
                           >
                             ✕
                           </button>
@@ -383,14 +384,14 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
                           <button
                             onClick={() => handleStartEdit(compartment)}
                             className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                            title="Edit"
+                            title="Modifier"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteCompartment(compartment)}
                             className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                            title="Delete"
+                            title="Supprimer"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -408,7 +409,7 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
               {!loading && (
                 <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <p className="text-xs text-blue-700 dark:text-blue-300">
-                    💡 <strong>Tips:</strong> Drag compartments by the grip icon to reorder them. You'll see a blue line indicating where they'll be dropped. Changes are saved automatically.
+                    Faites glisser la poignée pour réordonner les compartiments. Les changements sont enregistrés automatiquement.
                   </p>
                 </div>
               )}
@@ -422,7 +423,7 @@ const SettingsModal = ({ onClose, showSchedulingFields = false, onToggleScheduli
             onClick={handleClose}
             className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-colors"
           >
-            Done
+            Terminé
           </button>
         </div>
       </div>

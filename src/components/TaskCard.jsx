@@ -6,9 +6,10 @@ import {
   PRIORITY_STYLES, 
   PRIORITY_DOT, 
   STATUS_COLORS, 
-  SIZE_COLORS, 
   COMPARTMENT_COLORS,
-  WHEN_OPTIONS 
+  WHEN_OPTIONS,
+  STATUS_LABELS,
+  WHEN_LABELS,
 } from '../utils/constants'
 import { badgeStyle, compStyle, styleWhen, formatDateFR, isPast } from '../utils/helpers'
 
@@ -23,7 +24,7 @@ const TaskCard = ({
   onRemove, 
   onUpdate, 
   groupBy,
-  viewMode = "full"
+  viewMode = "full",
 }) => {
   if (!task) return null
 
@@ -58,14 +59,14 @@ const TaskCard = ({
               onEdit()
             } 
           }}
-          className={`group cursor-pointer mb-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm hover:shadow-md transition-shadow ${
+          className={`group relative mb-2 cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm transition-[box-shadow,border-color,transform] hover:-translate-y-px hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 ${
             snapshot.isDragging ? "ring-2 ring-slate-300 dark:ring-slate-600" : ""
           }`}
         >
           {/* Bandeau compartiment si groupé par priorité ou statut */}
           {viewMode !== "compact" && (groupBy === "priority" || groupBy === "status") && (
             <div 
-              className="mb-2 -mx-3 -mt-3 px-3 py-1.5 rounded-t-2xl border-b" 
+              className="mb-3 -mr-3.5 -mt-3.5 rounded-tr-xl border-b px-3 py-1.5"
               style={compStyle(COMPARTMENT_COLORS[task.compartment] || COMPARTMENT_COLORS.PM)}
             >
               <span className="text-xs font-medium tracking-wide">{task.compartment}</span>
@@ -73,42 +74,41 @@ const TaskCard = ({
           )}
 
           {/* En-tête avec priorité et titre - Toujours visible */}
-          <div className="flex items-start gap-2 mb-2">
-            <span className={`inline-flex items-center gap-2 px-2 py-0.5 rounded-md border text-xs ${PRIORITY_STYLES[task.priority]}`}>
+          <div className="mb-2.5 flex items-start gap-2">
+            <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${PRIORITY_STYLES[task.priority]}`}>
               <span className={`h-2 w-2 rounded-full ${PRIORITY_DOT[task.priority]}`}></span>
               {task.priority}
             </span>
             
-            <div className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200 break-words">
+            <div className="flex-1 break-words text-sm font-semibold leading-5 text-slate-900 dark:text-slate-100">
               {task.title}
             </div>
           </div>
 
           {/* Statut et taille - Masqué en mode compact */}
           {viewMode !== "compact" && (
-            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+            <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span 
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs" 
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium"
                 style={badgeStyle(STATUS_COLORS[task.status])}
               >
-                {task.status}
+                {STATUS_LABELS[task.status] || task.status}
               </span>
               <span 
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs" 
-                style={badgeStyle(SIZE_COLORS[task.size])}
+                className="text-[11px] font-semibold text-slate-400 dark:text-slate-500"
               >
-                {task.size}
+                Taille {task.size}
               </span>
             </div>
           )}
 
           {/* Indicateurs supplémentaires - Masqué en mode compact */}
           {viewMode !== "compact" && (task.flagged || task.dueDate || (task.note && task.note.trim()) || (task.subtasks && task.subtasks.length > 0)) && (
-            <div className="mt-2 flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 pt-2.5 text-[11px] text-slate-500 dark:border-slate-800 dark:text-slate-400">
               {task.flagged && (
                 <span className="inline-flex items-center gap-1">
                   <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                  Risk
+                  À risque
                 </span>
               )}
               {task.dueDate && (
@@ -124,33 +124,36 @@ const TaskCard = ({
                 </span>
               )}
               {task.note && task.note.trim() && (
-                <span className="inline-flex items-center" title="Note">
+                <span className="inline-flex items-center gap-1" title="Une note est disponible">
                   <FileText className="h-3.5 w-3.5"/>
+                  Note
                 </span>
               )}
             </div>
           )}
 
           {/* Barre de progression de la tâche - Visible dans tous les modes */}
-          <div className="mt-2 space-y-1">
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-              <span>Progress</span>
+          {completion > 0 && (
+          <div className="mt-3 space-y-1">
+            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+              <span>Progression</span>
               <span>{completion}%</span>
             </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+            <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800">
               <div 
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  completion === 100 ? 'bg-emerald-500' : completion > 0 ? 'bg-blue-500' : 'bg-slate-300'
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  completion === 100 ? 'bg-[#21A179]' : 'bg-[#356AE6]'
                 }`}
                 style={{ width: `${completion}%` }}
               ></div>
             </div>
           </div>
+          )}
 
           {/* Sélecteur "Quand" - Visible uniquement en mode complet */}
           {viewMode === "full" && (
             <div 
-              className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-center" 
+              className="mt-3 flex items-center justify-center border-t border-slate-100 pt-3 dark:border-slate-800"
               onClick={(e) => e.stopPropagation()} 
               onMouseDown={(e) => e.stopPropagation()} 
               onPointerDown={(e) => e.stopPropagation()}
@@ -163,25 +166,25 @@ const TaskCard = ({
                 >
                   <SelectTrigger 
                     data-select-trigger
-                    className="inline-flex items-center justify-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm border-0 focus:outline-none focus:ring-2 focus:ring-slate-200 whitespace-nowrap w-[120px]" 
+                    className="inline-flex w-[140px] items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-700"
                     style={styleWhen(task.when || "")}
                   >
                     <CalendarIcon className="h-3 w-3 opacity-70" />
-                    <span>{task.when || "To be defined"}</span>
+                    <span>{WHEN_LABELS[task.when || '']}</span>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border border-slate-200 min-w-[180px]">
                     {/* Option de vidage */}
                     <SelectItem value="__clear">
                       <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full" style={styleWhen("")}>
                         <CalendarIcon className="h-3 w-3 opacity-70" />
-                        To be defined
+                        À planifier
                       </span>
                     </SelectItem>
                     {WHEN_OPTIONS.filter(x => x !== "").map((opt) => (
                       <SelectItem key={opt} value={opt}>
                         <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full" style={styleWhen(opt)}>
                           <CalendarIcon className="h-3 w-3 opacity-70" />
-                          {opt}
+                          {WHEN_LABELS[opt]}
                         </span>
                       </SelectItem>
                     ))}

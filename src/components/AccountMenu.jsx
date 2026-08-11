@@ -77,7 +77,9 @@ const AccountMenu = ({ user, onSignOut, showSchedulingFields, onToggleScheduling
       {/* Bouton déclencheur */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-300"
+        className="flex items-center gap-2 rounded-full border border-transparent px-2 py-1.5 transition-colors hover:border-slate-200 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+        aria-label="Ouvrir le menu du compte"
+        aria-expanded={isOpen}
       >
         {/* Avatar avec initiales */}
         <div className={`w-8 h-8 rounded-full ${getAvatarColor(user?.email)} flex items-center justify-center text-white text-sm font-medium`}>
@@ -95,18 +97,18 @@ const AccountMenu = ({ user, onSignOut, showSchedulingFields, onToggleScheduling
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           
           {/* Menu */}
-          <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-20">
+          <div className="absolute right-0 z-20 mt-2 w-64 rounded-2xl border border-slate-200 bg-white py-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
             {/* Header utilisateur */}
-            <div className="px-4 py-3 border-b border-slate-100">
+            <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full ${getAvatarColor(user?.email)} flex items-center justify-center text-white font-medium`}>
                   {getInitials(user?.email)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-slate-900 truncate">
-                    {user?.email?.split('@')[0] || 'Utilisateur'}
+                  <div className="truncate font-medium text-slate-900 dark:text-white">
+                    {user?.email?.split('@')[0] || 'Compte'}
                   </div>
-                  <div className="text-sm text-slate-500 truncate">
+                  <div className="truncate text-sm text-slate-500 dark:text-slate-400">
                     {user?.email}
                   </div>
                 </div>
@@ -117,62 +119,62 @@ const AccountMenu = ({ user, onSignOut, showSchedulingFields, onToggleScheduling
             <div className="py-1">
               {/* Option Mon compte */}
               <button
-                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => {
                   setIsOpen(false)
                   setShowAccountModal(true)
                 }}
               >
                 <User className="w-4 h-4 text-slate-500" />
-My Account
+Mon compte
               </button>
 
               {/* Option Settings */}
               <button
-                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => {
                   setIsOpen(false)
                   setShowSettingsModal(true)
                 }}
               >
                 <Settings className="w-4 h-4 text-slate-500" />
-Settings
+Paramètres
               </button>
 
               {/* Option Help */}
               <button
-                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => {
                   setIsOpen(false)
                   setShowHelpModal(true)
                 }}
               >
                 <HelpCircle className="w-4 h-4 text-slate-500" />
-Help
+Aide
               </button>
 
               {/* Option Feedback */}
               <button
-                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => {
                   setIsOpen(false)
                   window.open('https://forms.gle/kYEEkbSznQYqZunu7', '_blank', 'noopener,noreferrer')
                 }}
               >
                 <MessageCircle className="w-4 h-4 text-slate-500" />
-Give Feedback
+Donner mon avis
               </button>
 
               {/* Divider */}
-              <div className="border-t border-slate-100 my-1" />
+              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
               {/* Déconnexion */}
               <button
                 onClick={handleSignOut}
-                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <LogOut className="w-4 h-4 text-slate-500" />
-Sign Out
+Se déconnecter
               </button>
             </div>
           </div>

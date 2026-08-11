@@ -48,6 +48,23 @@ export const STATUSES = ["To Do", "To Analyze", "In Progress", "Done", "Cancelle
 export const SIZES = ["S", "M", "L", "XL", "XXL"]
 export const WHEN_OPTIONS = ["", "Today", "This Week", "Next Week", "This Month", "Next Month"]
 
+export const STATUS_LABELS = {
+  "To Do": "À faire",
+  "To Analyze": "À analyser",
+  "In Progress": "En cours",
+  "Done": "Terminée",
+  "Cancelled": "Annulée",
+}
+
+export const WHEN_LABELS = {
+  "": "À planifier",
+  "Today": "Aujourd’hui",
+  "This Week": "Cette semaine",
+  "Next Week": "Semaine prochaine",
+  "This Month": "Ce mois-ci",
+  "Next Month": "Mois prochain",
+}
+
 // Couleurs et styles pour l'interface
 export const WHEN_COLORS = {
   "": { bg: "#F8FAFC", text: "#64748B" },               // slate-50 / 500 (very light)

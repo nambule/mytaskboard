@@ -11,7 +11,9 @@ import {
   PRIORITY_DOT,
   STATUS_COLORS,
   SIZE_COLORS,
-  WHEN_COLORS
+  WHEN_COLORS,
+  STATUS_LABELS,
+  WHEN_LABELS,
 } from '../utils/constants'
 import { badgeStyle, styleWhen } from '../utils/helpers'
 
@@ -209,22 +211,23 @@ const TaskModal = ({
 
   return (
     <div 
-      className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" 
+      className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }} 
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }} 
       tabIndex={-1}
     >
-      <div className="w-full max-w-xl max-h-[calc(100vh-2rem)] rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+      <div role="dialog" aria-modal="true" aria-labelledby="task-modal-title" className="app-modal flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
         <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col min-h-0 max-h-full">
           {/* En-tête */}
           <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-            <div className="font-semibold">
-              {editing ? "Edit Task" : "New Task"}
+            <div id="task-modal-title" className="font-display font-bold text-slate-900 dark:text-white">
+              {editing ? "Modifier la tâche" : "Nouvelle tâche"}
             </div>
             <button 
               type="button" 
               onClick={onClose} 
               className="text-slate-400 hover:text-slate-600"
+              aria-label="Fermer"
             >
               <X className="h-5 w-5" />
             </button>
@@ -234,14 +237,14 @@ const TaskModal = ({
           <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
             {/* Titre */}
             <div>
-              <label className="text-sm text-slate-600">Title</label>
+              <label className="text-sm text-slate-600">Titre</label>
               <input 
                 autoFocus 
                 value={title} 
                 onChange={(e) => setTitle(e.target.value)} 
                 required
                 className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300"
-                placeholder="e.g. Export to portal"
+                placeholder="Ex. Préparer la revue mensuelle"
                 disabled={loading}
               />
             </div>
@@ -249,7 +252,7 @@ const TaskModal = ({
             {/* Priorité et Compartiment */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm text-slate-600">Priority</label>
+                <label className="text-sm text-slate-600">Priorité</label>
                 <div className="mt-1">
                   <Select value={priority} onValueChange={setPriority}>
                     <SelectTrigger className="w-full rounded-xl border border-slate-300 px-2 py-2">
@@ -274,7 +277,7 @@ const TaskModal = ({
                 </div>
               </div>
               <div>
-                <label className="text-sm text-slate-600">Department</label>
+                <label className="text-sm text-slate-600">Compartiment</label>
                 <select 
                   value={compartment} 
                   onChange={(e) => setCompartment(e.target.value)} 
@@ -291,7 +294,7 @@ const TaskModal = ({
             {/* Statut et Charge */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm text-slate-600">Status</label>
+                <label className="text-sm text-slate-600">Statut</label>
                 <div className="mt-1">
                   <Select value={status} onValueChange={setStatus}>
                     <SelectTrigger className="w-full rounded-xl border border-slate-300 px-2 py-2">
@@ -300,7 +303,7 @@ const TaskModal = ({
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs" 
                           style={badgeStyle(STATUS_COLORS[status])}
                         >
-                          {status}
+                          {STATUS_LABELS[status]}
                         </span>
                       </div>
                     </SelectTrigger>
@@ -311,7 +314,7 @@ const TaskModal = ({
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs" 
                             style={badgeStyle(STATUS_COLORS[s])}
                           >
-                            {s}
+                            {STATUS_LABELS[s]}
                           </span>
                         </SelectItem>
                       ))}
@@ -320,7 +323,7 @@ const TaskModal = ({
                 </div>
               </div>
               <div>
-                <label className="text-sm text-slate-600">Size (T-shirt)</label>
+                <label className="text-sm text-slate-600">Taille</label>
                 <div className="mt-1">
                   <Select value={size} onValueChange={setSize}>
                     <SelectTrigger className="w-full rounded-xl border border-slate-300 px-2 py-2">
@@ -352,7 +355,7 @@ const TaskModal = ({
 
             {/* Next Action (When) */}
             <div>
-              <label className="text-sm text-slate-600">Next action</label>
+              <label className="text-sm text-slate-600">Prochaine action</label>
               <div className="mt-1">
                 <Select value={when} onValueChange={setWhen}>
                   <SelectTrigger className="w-full rounded-xl border border-slate-300 px-2 py-2">
@@ -361,7 +364,7 @@ const TaskModal = ({
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs" 
                         style={styleWhen(when)}
                       >
-                        {when || "To be defined"}
+                        {WHEN_LABELS[when]}
                       </span>
                     </div>
                   </SelectTrigger>
@@ -372,7 +375,7 @@ const TaskModal = ({
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs" 
                         style={styleWhen("")}
                       >
-                        To be defined
+                        À planifier
                       </span>
                     </SelectItem>
                     {WHEN_OPTIONS.filter(x => x !== "").map((opt) => (
@@ -381,7 +384,7 @@ const TaskModal = ({
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs" 
                           style={styleWhen(opt)}
                         >
-                          {opt}
+                          {WHEN_LABELS[opt]}
                         </span>
                       </SelectItem>
                     ))}
@@ -405,7 +408,7 @@ const TaskModal = ({
             {showSchedulingFields && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-slate-600">Hours</label>
+                  <label className="text-sm text-slate-600">Heures</label>
                   <input 
                     type="number" 
                     min="0" 
@@ -413,30 +416,30 @@ const TaskModal = ({
                     value={hours} 
                     onChange={(e) => setHours(e.target.value)} 
                     className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                    placeholder="e.g. 8 or 2.5"
+                    placeholder="Ex. 8 ou 2,5"
                     disabled={loading}
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-slate-600">Time Allocation</label>
+                  <label className="text-sm text-slate-600">Répartition</label>
                   <div className="mt-1">
                     <Select value={timeAllocation} onValueChange={setTimeAllocation}>
                       <SelectTrigger className="w-full rounded-xl border border-slate-300 px-3 py-2">
                         <span className="text-sm">
-                          {timeAllocation === "one shot" && "One Shot"}
-                          {timeAllocation === "per week" && "Per Week"}
-                          {timeAllocation === "per 2 weeks" && "Per 2 Weeks"}
+                          {timeAllocation === "one shot" && "Ponctuelle"}
+                          {timeAllocation === "per week" && "Par semaine"}
+                          {timeAllocation === "per 2 weeks" && "Toutes les 2 semaines"}
                         </span>
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border border-slate-200">
                         <SelectItem value="one shot">
-                          <span className="text-sm">One Shot</span>
+                          <span className="text-sm">Ponctuelle</span>
                         </SelectItem>
                         <SelectItem value="per week">
-                          <span className="text-sm">Per Week</span>
+                          <span className="text-sm">Par semaine</span>
                         </SelectItem>
                         <SelectItem value="per 2 weeks">
-                          <span className="text-sm">Per 2 Weeks</span>
+                          <span className="text-sm">Toutes les 2 semaines</span>
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -449,7 +452,7 @@ const TaskModal = ({
               {showSchedulingFields && (
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-600">Total Time:</span>
+                    <span className="text-sm text-slate-600">Temps total :</span>
                     <span className="text-sm font-medium text-slate-900 bg-slate-100 px-2 py-1 rounded">
                       {(() => {
                         const hoursValue = parseFloat(hours) || 0
@@ -486,7 +489,7 @@ const TaskModal = ({
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-600">Duration:</span>
+                    <span className="text-sm text-slate-600">Durée :</span>
                     <span className="text-sm font-medium text-slate-900 bg-slate-100 px-2 py-1 rounded">
                       {(() => {
                         if (startDate && dueDate) {
@@ -518,11 +521,11 @@ const TaskModal = ({
 
             {/* Note */}
             <div>
-              <label className="text-sm text-slate-600">Note</label>
+              <label className="text-sm text-slate-600">Note interne</label>
               <textarea 
                 value={note} 
                 onChange={(e) => setNote(e.target.value)} 
-                placeholder="Internal note (not displayed on board)" 
+                placeholder="Contexte ou information utile…"
                 className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 h-28"
                 disabled={loading}
               />
@@ -530,7 +533,7 @@ const TaskModal = ({
 
             {/* Completion Gauge */}
             <div>
-              <label className="text-sm text-slate-600 mb-3 block">Task Progress</label>
+              <label className="text-sm text-slate-600 mb-3 block">Progression</label>
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span>0%</span>
@@ -565,13 +568,13 @@ const TaskModal = ({
 
             {/* Sous-tâches */}
             <div>
-              <div className="text-sm text-slate-600">Subtasks</div>
+              <div className="text-sm text-slate-600">Sous-tâches</div>
               <div className="mt-2 flex gap-2">
                 <input 
                   value={subInput} 
                   onChange={(e) => setSubInput(e.target.value)} 
                   onKeyDown={handleSubtaskKeyDown}
-                  placeholder="Add a subtask"
+                  placeholder="Ajouter une sous-tâche"
                   className="flex-1 rounded-xl border border-slate-300 px-3 py-2"
                   disabled={loading}
                 />
@@ -596,13 +599,13 @@ const TaskModal = ({
                             ? 'text-amber-500 hover:text-amber-600' 
                             : 'text-slate-300 hover:text-slate-400'
                         }`}
-                        title={s.nextAction ? "Remove as next action" : "Set as next action"}
+                        title={s.nextAction ? "Retirer comme prochaine action" : "Définir comme prochaine action"}
                       >
                         <Star className={`h-4 w-4 ${s.nextAction ? 'fill-current' : ''}`} />
                       </button>
                       <span className={`${s.status === "Done" ? "line-through text-slate-400" : ""} ${s.nextAction ? "font-medium text-slate-900" : ""}`}>
                         {s.title}
-                        {s.nextAction && <span className="ml-1 text-xs text-amber-600 font-semibold">(Next)</span>}
+                        {s.nextAction && <span className="ml-1 text-xs text-amber-600 font-semibold">(prochaine)</span>}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -652,7 +655,7 @@ const TaskModal = ({
                 className="mr-auto px-3 py-2 rounded-xl bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
                 disabled={loading}
               >
-                Delete
+                Supprimer
               </button>
             )}
             {editing && (
@@ -661,10 +664,10 @@ const TaskModal = ({
                 onClick={handleMarkAsDone}
                 className="px-3 py-2 rounded-xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 disabled:hover:bg-transparent flex items-center gap-2"
                 disabled={isActionDisabled}
-                title="Complete this task"
+                title="Terminer cette tâche"
               >
                 <Check className="h-4 w-4" />
-                Mark as done
+                Terminer
               </button>
             )}
             <button 
@@ -672,14 +675,14 @@ const TaskModal = ({
               onClick={onClose} 
               className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200"
             >
-              Cancel
+              Annuler
             </button>
             <button 
               type="submit" 
               className="px-3 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
               disabled={isActionDisabled}
             >
-              {editing ? "Save" : "Create"}
+              {editing ? "Enregistrer" : "Créer"}
             </button>
           </div>
         </form>

@@ -21,11 +21,12 @@ const HelpModal = ({ onClose, onCreateTask }) => {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-            How to Use Your Task Board 🎯
+            Bien utiliser votre tableau
           </h2>
           <button
             onClick={onClose}
             className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            aria-label="Fermer"
           >
             <X className="h-5 w-5 text-slate-500" />
           </button>
@@ -35,7 +36,7 @@ const HelpModal = ({ onClose, onCreateTask }) => {
         <div className="p-6 overflow-y-auto flex-1">
           <div className="mb-6">
             <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-              Get started by creating your first task. Here's how the board works:
+              Commencez avec quelques tâches, puis adaptez le niveau de détail à votre façon de travailler.
             </p>
           </div>
           
@@ -46,9 +47,9 @@ const HelpModal = ({ onClose, onCreateTask }) => {
                   <span className="text-blue-600 dark:text-blue-400 text-sm font-semibold">1</span>
                 </div>
                 <div>
-                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Create Tasks</h4>
+                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Créer</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Click the <strong>"Add"</strong> button in any compartment to create a new task
+                    Utilisez <strong>Ajouter</strong> dans la colonne de votre choix.
                   </p>
                 </div>
               </div>
@@ -58,9 +59,9 @@ const HelpModal = ({ onClose, onCreateTask }) => {
                   <span className="text-green-600 dark:text-green-400 text-sm font-semibold">2</span>
                 </div>
                 <div>
-                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Organize</h4>
+                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Organiser</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Drag and drop tasks between compartments and set priorities
+                    Déplacez les tâches entre les colonnes et définissez leurs priorités.
                   </p>
                 </div>
               </div>
@@ -70,9 +71,9 @@ const HelpModal = ({ onClose, onCreateTask }) => {
                   <span className="text-cyan-600 dark:text-cyan-400 text-sm font-semibold">3</span>
                 </div>
                 <div>
-                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Manage Compartments</h4>
+                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Personnaliser</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Click your profile menu → <strong>"Settings"</strong> to customize compartment names and colors
+                    Ouvrez votre profil puis <strong>Paramètres</strong> pour adapter les compartiments.
                   </p>
                 </div>
               </div>
@@ -84,9 +85,9 @@ const HelpModal = ({ onClose, onCreateTask }) => {
                   <span className="text-purple-600 dark:text-purple-400 text-sm font-semibold">4</span>
                 </div>
                 <div>
-                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Track Progress</h4>
+                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Suivre</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Use different compartments to organize work by team, project, or workflow stage
+                    Ajustez la progression et les sous-tâches pour visualiser le travail restant.
                   </p>
                 </div>
               </div>
@@ -96,9 +97,9 @@ const HelpModal = ({ onClose, onCreateTask }) => {
                   <span className="text-orange-600 dark:text-orange-400 text-sm font-semibold">5</span>
                 </div>
                 <div>
-                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Quick Tasks</h4>
+                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Collecter</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Use <strong>"Quick Task"</strong> for rapid idea capture, then organize later
+                    Utilisez <strong>Collecte rapide</strong> pour noter une idée avant de la classer.
                   </p>
                 </div>
               </div>
@@ -106,25 +107,25 @@ const HelpModal = ({ onClose, onCreateTask }) => {
           </div>
           
           <div className="mt-8 p-6 bg-slate-50 dark:bg-slate-700 rounded-xl">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Additional Features:</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Fonctions utiles</h3>
             <div className="grid md:grid-cols-2 gap-4 text-sm text-slate-600 dark:text-slate-400">
               <div>
-                <strong>Grouping Options:</strong> Group tasks by Compartment, Priority, or Status
+                <strong>Regroupement :</strong> compartiment, priorité ou statut
               </div>
               <div>
-                <strong>View Modes:</strong> Switch between Compact, Standard, and Full views
+                <strong>Densité :</strong> compacte, standard ou détaillée
               </div>
               <div>
-                <strong>Filtering:</strong> Filter tasks by priority and status
+                <strong>Filtres :</strong> priorité, statut et prochaine action
               </div>
               <div>
-                <strong>Dark Mode:</strong> Toggle between light and dark themes
+                <strong>Thème :</strong> clair ou sombre
               </div>
               <div>
-                <strong>Task Details:</strong> Add notes, subtasks, due dates, and more
+                <strong>Détails :</strong> notes, sous-tâches, dates et charge
               </div>
               <div>
-                <strong>Search:</strong> Find tasks quickly using the search bar
+                <strong>Recherche :</strong> titre, note ou sous-tâche
               </div>
             </div>
           </div>
@@ -133,7 +134,7 @@ const HelpModal = ({ onClose, onCreateTask }) => {
         {/* Footer */}
         <div className="px-6 py-4 bg-slate-50 dark:bg-slate-700 rounded-b-2xl flex items-center justify-between">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            💡 <strong>Tip:</strong> Start with a few tasks to get familiar with the interface
+            Astuce : commencez simplement et ajoutez du détail uniquement quand il devient utile.
           </p>
           {onCreateTask && (
             <button 
@@ -144,7 +145,7 @@ const HelpModal = ({ onClose, onCreateTask }) => {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-600 text-white hover:bg-slate-800 dark:hover:bg-slate-500 font-medium transition-colors"
             >
               <Plus className="h-4 w-4" />
-              Create Task
+              Créer une tâche
             </button>
           )}
         </div>
