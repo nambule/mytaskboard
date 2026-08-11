@@ -13,6 +13,7 @@ import AccountMenu from './components/AccountMenu'
 import LandingScreen from './components/LandingScreen'
 import BoardToolbar from './components/BoardToolbar'
 import StickyBoardScrollbar from './components/StickyBoardScrollbar'
+import PlanningView from './components/PlanningView'
 
 import {
   PRIORITIES,
@@ -78,6 +79,8 @@ const loadSessionPreferences = () => {
     statusFilterState: DEFAULT_STATUS_FILTER,
     nextActionFilter: 'All',
     sortBy: 'none',
+    currentView: 'board',
+    planningZoom: '3m',
   }
 
   try {
@@ -99,6 +102,12 @@ const loadSessionPreferences = () => {
       sortBy: ['none', 'priorityAsc', 'priorityDesc', 'whenAsc', 'whenDesc'].includes(saved.sortBy)
         ? saved.sortBy
         : defaults.sortBy,
+      currentView: ['board', 'planning'].includes(saved.currentView)
+        ? saved.currentView
+        : defaults.currentView,
+      planningZoom: ['1m', '3m', '6m', '1y'].includes(saved.planningZoom)
+        ? saved.planningZoom
+        : defaults.planningZoom,
     }
   } catch (error) {
     console.warn('Unable to restore session preferences:', error)
@@ -129,6 +138,8 @@ function App() {
   const [statusFilterState, setStatusFilterState] = useState(sessionPreferences.statusFilterState)
   const [nextActionFilter, setNextActionFilter] = useState(sessionPreferences.nextActionFilter)
   const [sortBy, setSortBy] = useState(sessionPreferences.sortBy)
+  const [currentView, setCurrentView] = useState(sessionPreferences.currentView)
+  const [planningZoom, setPlanningZoom] = useState(sessionPreferences.planningZoom)
   const [activeMobileColumn, setActiveMobileColumn] = useState(null)
   const [modal, setModal] = useState({ 
     open: false, editingId: null, initialColumn: null, prefillTitle: "", fromQuickId: null 
@@ -161,6 +172,8 @@ function App() {
         statusFilterState,
         nextActionFilter,
         sortBy,
+        currentView,
+        planningZoom,
       }))
     } catch (error) {
       console.warn('Unable to save session preferences:', error)
@@ -173,6 +186,8 @@ function App() {
     statusFilterState,
     nextActionFilter,
     sortBy,
+    currentView,
+    planningZoom,
   ])
 
 
@@ -323,6 +338,20 @@ function App() {
     
     return res
   }, [order, groupBy, columns, tasks, search, priorityFilter, statusFilterState, nextActionFilter, sortBy])
+
+  const planningTasks = useMemo(() => Object.values(tasks).filter((task) => {
+    const searchTerm = search.trim().toLowerCase()
+    const matchesSearch = !searchTerm
+      || task.title?.toLowerCase().includes(searchTerm)
+      || task.note?.toLowerCase().includes(searchTerm)
+      || task.subtasks?.some((subtask) => subtask.title?.toLowerCase().includes(searchTerm))
+    const matchesPriority = priorityFilter[task.priority]
+    const matchesStatus = statusFilterState[task.status]
+    const matchesNextAction = nextActionFilter === 'All'
+      || (WHEN_ORDER[task.when || ''] || 99) <= (WHEN_ORDER[nextActionFilter] || 99)
+
+    return matchesSearch && matchesPriority && matchesStatus && matchesNextAction
+  }), [tasks, search, priorityFilter, statusFilterState, nextActionFilter])
 
   // Colonnes affichées (masquer "Terminé" si vide et pas filtré)
   const displayedColumns = useMemo(() => {
@@ -695,6 +724,8 @@ function App() {
     <div className="min-h-screen w-full bg-[#F6F7F9] text-[#172033] transition-colors dark:bg-slate-950 dark:text-slate-100">
       <BoardToolbar
         user={user}
+        activeView={currentView}
+        onViewChange={setCurrentView}
         search={search}
         onSearchChange={setSearch}
         priorityFilter={priorityFilter}
@@ -938,6 +969,17 @@ Quick Task
         </div>
       </header>)}
 
+      {currentView === 'planning' ? (
+        <PlanningView
+          tasks={planningTasks}
+          compartments={compartmentObjects}
+          zoom={planningZoom}
+          onZoomChange={setPlanningZoom}
+          onUpdateTask={updateTask}
+          onOpenTask={openEdit}
+        />
+      ) : (
+      <>
       {/* Tableau des tâches */}
       <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6">
         <div className="mb-4 flex gap-2 overflow-x-auto pb-1 md:hidden" role="tablist" aria-label="Colonnes du tableau">
@@ -1152,6 +1194,8 @@ Quick Task
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Modale de tâche */}
       {modal.open && (

@@ -20,6 +20,7 @@ A modern, full-featured task management application built with React, Supabase, 
 - 📊 **Progress Tracking** - Visual progress bars with percentage completion
 - 📋 **Task Notes** - Internal notes and documentation
 - ⏰ **Time Planning** - "When" scheduling with color-coded indicators
+- 🗓️ **Macro Planning** - Weekly roadmap with 1, 3, 6 and 12-month zoom levels
 - 🏷️ **Priority System** - 5-level priority system (P1-P5) with visual badges
 - 📏 **Size Estimation** - T-shirt sizing (S, M, L, XL, XXL)
 
@@ -108,6 +109,8 @@ src/
 - when (TEXT) - Time planning
 - due_date (DATE) - Due date
 - start_date (DATE) - Start date
+- planning_start_date (DATE) - Weekly roadmap start
+- planning_end_date (DATE) - Weekly roadmap end
 - hours (NUMERIC) - Estimated hours
 - time_allocation (TEXT) - one shot, per week, per 2 weeks
 - flagged (BOOLEAN) - Risk flag

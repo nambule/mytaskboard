@@ -88,9 +88,12 @@ export const taskService = {
         status: task.status || 'To Do',
         size: task.size || 'M',
         note: task.note || '',
-        when: task.when || '',
+        when: task.planningExcluded ? '' : (task.when || ''),
         due_date: task.dueDate || null,
         start_date: task.startDate || null,
+        planning_start_date: task.planningExcluded ? null : (task.planningStartDate || null),
+        planning_end_date: task.planningExcluded ? null : (task.planningEndDate || null),
+        planning_excluded: task.planningExcluded || false,
         hours: task.hours ? parseFloat(task.hours) : null,
         time_allocation: task.timeAllocation || 'one shot',
         flagged: task.flagged || false,
@@ -129,6 +132,14 @@ export const taskService = {
     if ('when' in updates) updateData.when = updates.when
     if ('dueDate' in updates) updateData.due_date = updates.dueDate || null
     if ('startDate' in updates) updateData.start_date = updates.startDate || null
+    if ('planningStartDate' in updates) updateData.planning_start_date = updates.planningStartDate || null
+    if ('planningEndDate' in updates) updateData.planning_end_date = updates.planningEndDate || null
+    if ('planningExcluded' in updates) updateData.planning_excluded = updates.planningExcluded
+    if (updates.planningExcluded === true) {
+      updateData.when = ''
+      updateData.planning_start_date = null
+      updateData.planning_end_date = null
+    }
     if ('hours' in updates) updateData.hours = updates.hours ? parseFloat(updates.hours) : null
     if ('timeAllocation' in updates) updateData.time_allocation = updates.timeAllocation
     if ('flagged' in updates) updateData.flagged = updates.flagged

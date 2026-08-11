@@ -26,6 +26,33 @@ const loadConfetti = async () => {
   return confettiModule
 }
 
+const toISODate = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const parseLocalDate = (value) => {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+const startOfWeekISO = (value) => {
+  if (!value) return ''
+  const date = parseLocalDate(value)
+  const day = date.getDay() || 7
+  date.setDate(date.getDate() - day + 1)
+  return toISODate(date)
+}
+
+const endOfWeekISO = (value) => {
+  if (!value) return ''
+  const date = parseLocalDate(startOfWeekISO(value))
+  date.setDate(date.getDate() + 6)
+  return toISODate(date)
+}
+
 /**
  * Modale pour créer/éditer une tâche
  */
@@ -63,6 +90,9 @@ const TaskModal = ({
   const [note, setNote] = useState(editing?.note || "")
   const [dueDate, setDueDate] = useState(editing?.dueDate || "")
   const [startDate, setStartDate] = useState(editing?.startDate || "")
+  const [planningStartDate, setPlanningStartDate] = useState(editing?.planningStartDate || "")
+  const [planningEndDate, setPlanningEndDate] = useState(editing?.planningEndDate || "")
+  const [planningExcluded, setPlanningExcluded] = useState(!!editing?.planningExcluded)
   const [hours, setHours] = useState(editing?.hours || "")
   const [timeAllocation, setTimeAllocation] = useState(editing?.timeAllocation || "one shot")
   const [flagged, setFlagged] = useState(!!editing?.flagged)
@@ -132,10 +162,13 @@ const TaskModal = ({
       compartment,
       status,
       size,
-      when,
+      when: planningExcluded ? '' : when,
       note,
       dueDate,
       startDate,
+      planningStartDate,
+      planningEndDate,
+      planningExcluded,
       hours,
       timeAllocation,
       flagged,
@@ -169,10 +202,13 @@ const TaskModal = ({
       compartment,
       status: 'Done',
       size,
-      when,
+      when: planningExcluded ? '' : when,
       note,
       dueDate,
       startDate,
+      planningStartDate,
+      planningEndDate,
+      planningExcluded,
       hours,
       timeAllocation,
       flagged,
@@ -354,7 +390,7 @@ const TaskModal = ({
             </div>
 
             {/* Next Action (When) */}
-            <div>
+            {!planningExcluded && <div>
               <label className="text-sm text-slate-600">Prochaine action</label>
               <div className="mt-1">
                 <Select value={when} onValueChange={setWhen}>
@@ -391,6 +427,82 @@ const TaskModal = ({
                   </SelectContent>
                 </Select>
               </div>
+            </div>}
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Planning macro</div>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Les dates sont automatiquement alignées sur des semaines complètes.</p>
+                </div>
+                {(planningStartDate || planningEndDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlanningStartDate('')
+                      setPlanningEndDate('')
+                    }}
+                    className="text-xs font-semibold text-slate-500 hover:text-red-600"
+                  >
+                    Retirer
+                  </button>
+                )}
+              </div>
+              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/60">
+                <input
+                  type="checkbox"
+                  checked={planningExcluded}
+                  onChange={(event) => {
+                    const excluded = event.target.checked
+                    setPlanningExcluded(excluded)
+                    if (excluded) {
+                      setWhen('')
+                      setPlanningStartDate('')
+                      setPlanningEndDate('')
+                    }
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  disabled={loading}
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Pense-bête</span>
+                  <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Ne pas proposer cette tâche dans le planning.</span>
+                </span>
+              </label>
+              {!planningExcluded && <div className="mt-3 grid grid-cols-2 gap-3">
+                <label className="text-sm text-slate-600 dark:text-slate-300">
+                  Semaine de début
+                  <input
+                    type="date"
+                    value={planningStartDate}
+                    onChange={(event) => {
+                      const start = startOfWeekISO(event.target.value)
+                      setPlanningStartDate(start)
+                      if (!planningEndDate || planningEndDate < start) {
+                        setPlanningEndDate(endOfWeekISO(start))
+                      }
+                    }}
+                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                    disabled={loading}
+                  />
+                </label>
+                <label className="text-sm text-slate-600 dark:text-slate-300">
+                  Semaine de fin
+                  <input
+                    type="date"
+                    value={planningEndDate}
+                    onChange={(event) => {
+                      const end = endOfWeekISO(event.target.value)
+                      setPlanningEndDate(end)
+                      if (!planningStartDate || planningStartDate > end) {
+                        setPlanningStartDate(startOfWeekISO(end))
+                      }
+                    }}
+                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                    disabled={loading}
+                  />
+                </label>
+              </div>}
             </div>
 
             {showSchedulingFields && (

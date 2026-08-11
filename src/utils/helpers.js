@@ -49,9 +49,12 @@ export const transformTaskFromDB = (dbTask) => {
     status: STATUS_MAPPING[dbTask.status] || dbTask.status, // Normaliser le statut
     size: dbTask.size,
     note: dbTask.note,
-    when: WHEN_MAPPING[dbTask.when] || dbTask.when, // Normaliser le when
+    when: dbTask.planning_excluded ? '' : (WHEN_MAPPING[dbTask.when] || dbTask.when), // Un pense-bête n'a pas de prochaine action
     dueDate: dbTask.due_date,
     startDate: dbTask.start_date,
+    planningStartDate: dbTask.planning_start_date,
+    planningEndDate: dbTask.planning_end_date,
+    planningExcluded: dbTask.planning_excluded || false,
     hours: dbTask.hours,
     timeAllocation: dbTask.time_allocation,
     flagged: dbTask.flagged,
@@ -71,9 +74,12 @@ export const transformTaskToDB = (task) => {
     status: task.status,
     size: task.size,
     note: task.note || '',
-    when: task.when || '',
+    when: task.planningExcluded ? '' : (task.when || ''),
     due_date: task.dueDate || null,
     start_date: task.startDate || null,
+    planning_start_date: task.planningExcluded ? null : (task.planningStartDate || null),
+    planning_end_date: task.planningExcluded ? null : (task.planningEndDate || null),
+    planning_excluded: task.planningExcluded || false,
     hours: task.hours ? parseFloat(task.hours) : null,
     time_allocation: task.timeAllocation || 'one shot',
     flagged: task.flagged || false,

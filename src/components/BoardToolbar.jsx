@@ -3,6 +3,8 @@ import {
   ChevronDown,
   Filter,
   Inbox,
+  CalendarRange,
+  Columns,
   LayoutPanelTop,
   Moon,
   Search,
@@ -22,6 +24,8 @@ const controlClass = 'inline-flex min-h-10 items-center justify-center gap-2 rou
 
 const BoardToolbar = ({
   user,
+  activeView,
+  onViewChange,
   search,
   onSearchChange,
   priorityFilter,
@@ -52,11 +56,31 @@ const BoardToolbar = ({
   <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-[#F6F7F9]/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
     <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-6">
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-display truncate text-lg font-extrabold tracking-tight text-[#172033] dark:text-white sm:text-xl">
-            My Task Board
-          </h1>
-          <p className="hidden text-xs text-slate-500 sm:block">Votre espace de pilotage personnel</p>
+        <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+          <div className="min-w-0">
+            <h1 className="font-display truncate text-lg font-extrabold tracking-tight text-[#172033] dark:text-white sm:text-xl">
+              My Task Board
+            </h1>
+            <p className="hidden text-xs text-slate-500 sm:block">Votre espace de pilotage personnel</p>
+          </div>
+          <div className="flex shrink-0 rounded-xl bg-slate-200/70 p-1 dark:bg-slate-800" aria-label="Vue principale">
+            <button
+              type="button"
+              onClick={() => onViewChange('board')}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold sm:px-3 ${activeView === 'board' ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+            >
+              <Columns className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Tableau</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onViewChange('planning')}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold sm:px-3 ${activeView === 'planning' ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+            >
+              <CalendarRange className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Planning</span>
+            </button>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -182,7 +206,7 @@ const BoardToolbar = ({
               <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
             </summary>
             <div className="absolute right-0 z-40 mt-2 w-[min(21rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-              <label className="block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
+              <label className={`${activeView === 'planning' ? 'hidden' : 'block'} text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400`}>
                 Regrouper par
                 <select
                   value={groupBy}
@@ -195,7 +219,7 @@ const BoardToolbar = ({
                 </select>
               </label>
 
-              <label className="mt-4 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
+              <label className={`${activeView === 'planning' ? 'hidden' : 'mt-4 block'} text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400`}>
                 Trier
                 <select
                   value={sortBy}
@@ -210,7 +234,7 @@ const BoardToolbar = ({
                 </select>
               </label>
 
-              <fieldset className="mt-4">
+              <fieldset className={activeView === 'planning' ? 'hidden' : 'mt-4'}>
                 <legend className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Densité des cartes</legend>
                 <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
                   {[

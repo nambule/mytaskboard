@@ -151,7 +151,7 @@ const TaskCard = ({
           )}
 
           {/* Sélecteur "Quand" - Visible uniquement en mode complet */}
-          {viewMode === "full" && (
+          {viewMode === "full" && !task.planningExcluded && (
             <div 
               className="mt-3 flex items-center justify-center border-t border-slate-100 pt-3 dark:border-slate-800"
               onClick={(e) => e.stopPropagation()} 
