@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  CalendarRange,
   CalendarX,
   ChevronLeft,
   ChevronRight,
   GripVertical,
   LocateFixed,
+  Plus,
 } from 'lucide-react'
 import StickyBoardScrollbar from './StickyBoardScrollbar'
+import PlanningPeriodModal from './PlanningPeriodModal'
 import { STATUS_LABELS } from '../utils/constants'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -15,8 +18,8 @@ const ZOOM_CONFIG = {
   '3m': { label: '3 mois', weeks: 14, step: 13, weekWidth: 88 },
   '6m': { label: '6 mois', weeks: 27, step: 26, weekWidth: 58 },
   '1y': { label: '1 an', weeks: 53, step: 52, weekWidth: 34 },
+  '2y': { label: '2 ans', weeks: 105, step: 104, weekWidth: 22 },
 }
-
 const parseDate = (value) => {
   const [year, month, day] = value.split('-').map(Number)
   return new Date(year, month - 1, day)
@@ -72,14 +75,23 @@ const formatWeekRange = (startValue, endValue) => {
 const PlanningView = ({
   tasks,
   compartments,
+  periods = [],
+  periodsLoading,
+  periodsError,
   zoom,
   onZoomChange,
   onUpdateTask,
   onOpenTask,
+  onCreatePeriod,
+  onUpdatePeriod,
+  onDeletePeriod,
 }) => {
   const timelineScrollRef = useRef(null)
   const resizeRef = useRef(null)
+  const periodResizeRef = useRef(null)
   const [resizeDraft, setResizeDraft] = useState(null)
+  const [periodResizeDraft, setPeriodResizeDraft] = useState(null)
+  const [periodEditor, setPeriodEditor] = useState(null)
   const [viewStart, setViewStart] = useState(() => {
     try {
       const saved = sessionStorage.getItem('kanban-planning-start')
@@ -135,6 +147,31 @@ const PlanningView = ({
     }
   }
 
+  const periodColorMap = useMemo(() => {
+    const colorsById = new Map()
+    const periodsByCreation = [...periods].sort((first, second) => {
+      const firstKey = `${first.createdAt || ''}-${first.id}`
+      const secondKey = `${second.createdAt || ''}-${second.id}`
+      return firstKey.localeCompare(secondKey)
+    })
+
+    periodsByCreation.forEach((period, index) => {
+      const hue = (262 + index * 137.508) % 360
+      colorsById.set(period.id, {
+        bg: `hsl(${hue} 62% 38%)`,
+        border: `hsl(${hue} 72% 56%)`,
+        accent: `hsl(${hue} 88% 90%)`,
+      })
+    })
+    return colorsById
+  }, [periods])
+
+  const getPeriodColors = (period) => periodColorMap.get(period.id) || {
+    bg: '#475569',
+    border: '#64748B',
+    accent: '#E2E8F0',
+  }
+
   const monthSegments = useMemo(() => {
     const formatter = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
     return weeks.reduce((segments, week, index) => {
@@ -177,6 +214,54 @@ const PlanningView = ({
       planningStartDate: toISODate(start),
       planningEndDate: toISODate(end),
     })
+  }
+
+  const handlePeriodDragStart = (event, period) => {
+    event.dataTransfer.effectAllowed = 'move'
+    const rect = event.currentTarget.getBoundingClientRect()
+    event.dataTransfer.setData('application/x-planning-period', JSON.stringify({
+      id: period.id,
+      durationWeeks: getDurationWeeks({
+        planningStartDate: period.startDate,
+        planningEndDate: period.endDate,
+      }),
+      grabOffsetWeeks: Math.max(0, Math.floor((event.clientX - rect.left) / config.weekWidth)),
+    }))
+  }
+
+  const handlePeriodDrop = (event) => {
+    event.preventDefault()
+    const payload = event.dataTransfer.getData('application/x-planning-period')
+    if (!payload) return
+
+    const { id, durationWeeks = 1, grabOffsetWeeks = 0 } = JSON.parse(payload)
+    const rect = event.currentTarget.getBoundingClientRect()
+    const weekIndex = Math.max(0, Math.min(
+      config.weeks - 1,
+      Math.floor((event.clientX - rect.left) / config.weekWidth) - grabOffsetWeeks,
+    ))
+    const start = addWeeks(viewStart, weekIndex)
+    onUpdatePeriod(id, {
+      startDate: toISODate(start),
+      endDate: toISODate(addDays(start, durationWeeks * 7 - 1)),
+    })
+  }
+
+  const startPeriodResize = (event, period, edge) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const start = startOfWeek(period.startDate)
+    const end = endOfWeek(period.endDate)
+    periodResizeRef.current = {
+      id: period.id,
+      edge,
+      pointerStart: event.clientX,
+      originalStart: start,
+      originalEnd: end,
+      currentStart: start,
+      currentEnd: end,
+    }
+    setPeriodResizeDraft({ id: period.id, start, end })
   }
 
   const startResize = (event, task, edge) => {
@@ -238,7 +323,47 @@ const PlanningView = ({
     }
   }, [config.weekWidth, onUpdateTask])
 
-  const renderTimelineGrid = (className = '') => (
+  useEffect(() => {
+    const handlePointerMove = (event) => {
+      const resize = periodResizeRef.current
+      if (!resize) return
+      const deltaWeeks = Math.round((event.clientX - resize.pointerStart) / config.weekWidth)
+      let nextStart = resize.originalStart
+      let nextEnd = resize.originalEnd
+
+      if (resize.edge === 'start') {
+        nextStart = addWeeks(resize.originalStart, deltaWeeks)
+        if (nextStart > startOfWeek(resize.originalEnd)) nextStart = startOfWeek(resize.originalEnd)
+      } else {
+        nextEnd = addWeeks(resize.originalEnd, deltaWeeks)
+        if (nextEnd < endOfWeek(resize.originalStart)) nextEnd = endOfWeek(resize.originalStart)
+      }
+
+      resize.currentStart = nextStart
+      resize.currentEnd = nextEnd
+      setPeriodResizeDraft({ id: resize.id, start: nextStart, end: nextEnd })
+    }
+
+    const handlePointerUp = () => {
+      const resize = periodResizeRef.current
+      if (!resize) return
+      onUpdatePeriod(resize.id, {
+        startDate: toISODate(resize.currentStart),
+        endDate: toISODate(resize.currentEnd),
+      })
+      periodResizeRef.current = null
+      setPeriodResizeDraft(null)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [config.weekWidth, onUpdatePeriod])
+
+  const renderTimelineGrid = (className = '', onDrop = handleDrop) => (
     <div
       className={`relative h-full ${className}`}
       style={{
@@ -247,7 +372,7 @@ const PlanningView = ({
         backgroundSize: `${config.weekWidth}px 100%`,
       }}
       onDragOver={(event) => event.preventDefault()}
-      onDrop={handleDrop}
+      onDrop={onDrop}
     >
       {todayVisible && (
         <div
@@ -313,10 +438,59 @@ const PlanningView = ({
     )
   }
 
+  const renderPeriodBar = (period) => {
+    const draft = periodResizeDraft?.id === period.id ? periodResizeDraft : null
+    const start = draft?.start || startOfWeek(period.startDate)
+    const end = draft?.end || endOfWeek(period.endDate)
+    const rawStart = diffDays(viewStart, start) / 7
+    const rawEnd = (diffDays(viewStart, end) + 1) / 7
+    const clippedStart = Math.max(0, rawStart)
+    const clippedEnd = Math.min(config.weeks, rawEnd)
+    if (clippedEnd <= 0 || clippedStart >= config.weeks || clippedEnd <= clippedStart) return null
+    const colors = getPeriodColors(period)
+
+    return (
+      <div
+        key={period.id}
+        draggable={!draft}
+        onDragStart={(event) => handlePeriodDragStart(event, period)}
+        onClick={() => setPeriodEditor(period)}
+        className="absolute top-2 z-10 flex h-8 cursor-grab items-center overflow-hidden rounded-md border text-xs font-bold text-white shadow-sm active:cursor-grabbing"
+        style={{
+          left: clippedStart * config.weekWidth + 3,
+          width: Math.max(24, (clippedEnd - clippedStart) * config.weekWidth - 6),
+          backgroundColor: colors.bg,
+          borderColor: colors.border,
+        }}
+        title={`${period.title} · ${formatWeekRange(period.startDate, period.endDate)}`}
+      >
+        {rawStart >= 0 && (
+          <button type="button" onPointerDown={(event) => startPeriodResize(event, period, 'start')} onClick={(event) => event.stopPropagation()} className="flex h-full w-3 shrink-0 cursor-ew-resize items-center justify-center bg-white/10 hover:bg-white/20" aria-label={`Modifier le début de ${period.title}`}>
+            <span className="h-4 w-0.5 rounded" style={{ backgroundColor: colors.accent }} />
+          </button>
+        )}
+        <CalendarRange className="ml-2 h-3.5 w-3.5 shrink-0" style={{ color: colors.accent }} />
+        <span className="min-w-0 flex-1 truncate px-1.5">{period.title}</span>
+        {rawEnd <= config.weeks && (
+          <button type="button" onPointerDown={(event) => startPeriodResize(event, period, 'end')} onClick={(event) => event.stopPropagation()} className="flex h-full w-3 shrink-0 cursor-ew-resize items-center justify-center bg-white/10 hover:bg-white/20" aria-label={`Modifier la fin de ${period.title}`}>
+            <span className="h-4 w-0.5 rounded" style={{ backgroundColor: colors.accent }} />
+          </button>
+        )}
+      </div>
+    )
+  }
+
   const shiftTask = (task, weeksToAdd) => {
     onUpdateTask(task.id, {
       planningStartDate: toISODate(addWeeks(task.planningStartDate, weeksToAdd)),
       planningEndDate: toISODate(addWeeks(task.planningEndDate, weeksToAdd)),
+    })
+  }
+
+  const shiftPeriod = (period, weeksToAdd) => {
+    onUpdatePeriod(period.id, {
+      startDate: toISODate(addWeeks(period.startDate, weeksToAdd)),
+      endDate: toISODate(addWeeks(period.endDate, weeksToAdd)),
     })
   }
 
@@ -338,6 +512,9 @@ const PlanningView = ({
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Positionnement précis à la semaine, lecture macro sur plusieurs mois.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setPeriodEditor({ mode: 'new' })} className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700">
+            <Plus className="h-3.5 w-3.5" /> Nouvelle période
+          </button>
           <div className="flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <button type="button" onClick={() => setViewStart((date) => addWeeks(date, -config.step))} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Période précédente">
               <ChevronLeft className="h-4 w-4" />
@@ -423,6 +600,27 @@ const PlanningView = ({
               </div>
             </div>
 
+            <div className="grid h-12 border-b border-violet-200 bg-violet-50/40 dark:border-violet-900 dark:bg-violet-950/10" style={{ gridTemplateColumns: `260px ${timelineWidth}px` }}>
+              <div className="sticky left-0 z-30 flex items-center justify-between border-r border-violet-200 bg-violet-50 px-4 dark:border-violet-900 dark:bg-violet-950/40">
+                <div className="flex items-center gap-2 text-xs font-bold text-violet-800 dark:text-violet-200">
+                  <CalendarRange className="h-3.5 w-3.5" /> Périodes
+                </div>
+                <button type="button" onClick={() => setPeriodEditor({ mode: 'new' })} className="rounded-lg p-1.5 text-violet-600 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-900" aria-label="Ajouter une période">
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="relative" onDragOver={(event) => event.preventDefault()} onDrop={handlePeriodDrop}>
+                {renderTimelineGrid('bg-violet-50/20 dark:bg-violet-950/10', (event) => event.preventDefault())}
+                {periods.map(renderPeriodBar)}
+                {!periodsLoading && periods.length === 0 && !periodsError && (
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-violet-400">Ajoutez une première période.</span>
+                )}
+                {periodsError && (
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-red-500">Appliquez la migration des périodes pour activer cette ligne.</span>
+                )}
+              </div>
+            </div>
+
             {groups.map(([groupName, groupTasks]) => {
               const colors = getCompartmentColors(groupName)
               return (
@@ -466,6 +664,27 @@ const PlanningView = ({
       </div>
 
       <div className="mt-4 space-y-5 md:hidden">
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="font-display text-sm font-bold text-violet-700 dark:text-violet-300">Périodes</h3>
+            <button type="button" onClick={() => setPeriodEditor({ mode: 'new' })} className="inline-flex items-center gap-1 rounded-lg bg-violet-100 px-2.5 py-1.5 text-xs font-semibold text-violet-700 dark:bg-violet-950 dark:text-violet-300"><Plus className="h-3 w-3" /> Ajouter</button>
+          </div>
+          <div className="space-y-2">
+            {periods.map((period) => {
+              const colors = getPeriodColors(period)
+              return <div key={period.id} className="rounded-xl border bg-white p-3 dark:bg-slate-900" style={{ borderColor: colors.border }}>
+                <button type="button" onClick={() => setPeriodEditor(period)} className="w-full text-left">
+                  <span className="block text-sm font-bold" style={{ color: colors.bg }}>{period.title}</span>
+                  <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{formatWeekRange(period.startDate, period.endDate)}</span>
+                </button>
+                <div className="mt-3 flex gap-2">
+                  <button type="button" onClick={() => shiftPeriod(period, -1)} className="rounded-lg border px-2 py-1 text-xs" style={{ borderColor: colors.border }}>− 1 sem.</button>
+                  <button type="button" onClick={() => shiftPeriod(period, 1)} className="rounded-lg border px-2 py-1 text-xs" style={{ borderColor: colors.border }}>+ 1 sem.</button>
+                </div>
+              </div>
+            })}
+          </div>
+        </div>
         {Object.entries(mobileGroups).map(([month, monthTasks]) => (
           <div key={month}>
             <h3 className="font-display mb-2 text-sm font-bold capitalize text-slate-500 dark:text-slate-300">{month}</h3>
@@ -505,6 +724,22 @@ const PlanningView = ({
       </div>
 
       <p className="mt-3 text-xs text-slate-400">Période visible : {formatWeekRange(toISODate(viewStart), toISODate(visibleEnd))}</p>
+
+      {periodEditor && (
+        <PlanningPeriodModal
+          period={periodEditor.mode === 'new' ? null : periodEditor}
+          initialStartDate={toISODate(todayVisible ? startOfWeek() : viewStart)}
+          initialEndDate={toISODate(addDays(todayVisible ? startOfWeek() : viewStart, 27))}
+          onSave={(data) => periodEditor.mode === 'new'
+            ? onCreatePeriod(data)
+            : onUpdatePeriod(periodEditor.id, data)}
+          onDelete={async () => {
+            await onDeletePeriod(periodEditor.id)
+            setPeriodEditor(null)
+          }}
+          onClose={() => setPeriodEditor(null)}
+        />
+      )}
     </section>
   )
 }

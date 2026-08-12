@@ -20,7 +20,8 @@ A modern, full-featured task management application built with React, Supabase, 
 - 📊 **Progress Tracking** - Visual progress bars with percentage completion
 - 📋 **Task Notes** - Internal notes and documentation
 - ⏰ **Time Planning** - "When" scheduling with color-coded indicators
-- 🗓️ **Macro Planning** - Weekly roadmap with 1, 3, 6 and 12-month zoom levels
+- 🗓️ **Macro Planning** - Weekly roadmap with 1, 3, 6, 12 and 24-month zoom levels
+- 🟪 **Planning Periods** - Independent movable and resizable time windows on a shared timeline
 - 🏷️ **Priority System** - 5-level priority system (P1-P5) with visual badges
 - 📏 **Size Estimation** - T-shirt sizing (S, M, L, XL, XXL)
 
@@ -79,6 +80,8 @@ src/
    - Run the SQL schema files in the Supabase SQL editor:
      - `supabase-schema.sql` (main tables)
      - `supabase-setup.sql` (additional setup)
+     - `migration-planning-view.sql` (task planning dates and reminders)
+     - `migration-planning-periods.sql` (independent planning periods)
    - Copy `.env.example` to `.env` and add your credentials:
    ```env
    VITE_SUPABASE_URL=your_supabase_project_url

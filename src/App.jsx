@@ -5,6 +5,7 @@ import { Plus, MessageCircle } from 'lucide-react'
 import { useTasks } from './hooks/useTasks'
 import { useQuickTasks } from './hooks/useQuickTasks'
 import { useAuth } from './hooks/useAuth'
+import { usePlanningPeriods } from './hooks/usePlanningPeriods'
 import TaskCard from './components/TaskCard'
 import TaskModal from './components/TaskModal'
 import QuickTasksModal from './components/QuickTasksModal'
@@ -105,7 +106,7 @@ const loadSessionPreferences = () => {
       currentView: ['board', 'planning'].includes(saved.currentView)
         ? saved.currentView
         : defaults.currentView,
-      planningZoom: ['1m', '3m', '6m', '1y'].includes(saved.planningZoom)
+      planningZoom: ['1m', '3m', '6m', '1y', '2y'].includes(saved.planningZoom)
         ? saved.planningZoom
         : defaults.planningZoom,
     }
@@ -221,6 +222,15 @@ function App() {
     addQuickTask, 
     removeQuickTask 
   } = useQuickTasks()
+
+  const {
+    periods: planningPeriods,
+    loading: planningPeriodsLoading,
+    error: planningPeriodsError,
+    createPeriod,
+    updatePeriod,
+    deletePeriod,
+  } = usePlanningPeriods()
 
   // Référence pour fermer les filtres et menu visualisation
   const filterRef = useRef(null)
@@ -973,10 +983,16 @@ Quick Task
         <PlanningView
           tasks={planningTasks}
           compartments={compartmentObjects}
+          periods={planningPeriods}
+          periodsLoading={planningPeriodsLoading}
+          periodsError={planningPeriodsError}
           zoom={planningZoom}
           onZoomChange={setPlanningZoom}
           onUpdateTask={updateTask}
           onOpenTask={openEdit}
+          onCreatePeriod={createPeriod}
+          onUpdatePeriod={updatePeriod}
+          onDeletePeriod={deletePeriod}
         />
       ) : (
       <>
