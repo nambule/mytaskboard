@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  CalendarRange,
   CalendarX,
   ChevronLeft,
   ChevronRight,
@@ -126,6 +125,15 @@ const PlanningView = ({
     })
     return Array.from(groupMap.entries()).filter(([, groupTasks]) => groupTasks.length > 0)
   }, [compartments, plannedTasks])
+
+  const getCompartmentColors = (compartmentName) => {
+    const compartment = compartments.find((item) => item.name === compartmentName)
+    return {
+      bg: compartment?.color_bg || '#F1F5F9',
+      text: compartment?.color_text || '#334155',
+      border: compartment?.color_border || '#CBD5E1',
+    }
+  }
 
   const monthSegments = useMemo(() => {
     const formatter = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
@@ -261,17 +269,19 @@ const PlanningView = ({
     const clippedEnd = Math.min(config.weeks, rawEnd)
     if (clippedEnd <= 0 || clippedStart >= config.weeks || clippedEnd <= clippedStart) return null
 
-    const barColor = task.status === 'Done' ? '#21A179' : '#356AE6'
+    const colors = getCompartmentColors(task.compartment)
     return (
       <div
         draggable={!draft}
         onDragStart={(event) => handleDragStart(event, task)}
         onClick={() => onOpenTask(task.id)}
-        className={`absolute top-2 z-10 flex h-9 cursor-grab items-center overflow-hidden rounded-lg text-xs font-semibold text-white shadow-sm active:cursor-grabbing ${task.flagged ? 'ring-2 ring-[#D64C4C] ring-offset-1' : ''}`}
+        className={`absolute top-2 z-10 flex h-9 cursor-grab items-center overflow-hidden rounded-lg border text-xs font-semibold shadow-sm active:cursor-grabbing ${task.flagged ? 'ring-2 ring-[#D64C4C] ring-offset-1' : ''}`}
         style={{
           left: clippedStart * config.weekWidth + 3,
           width: Math.max(24, (clippedEnd - clippedStart) * config.weekWidth - 6),
-          backgroundColor: barColor,
+          backgroundColor: colors.bg,
+          color: colors.text,
+          borderColor: colors.border,
         }}
         title={`${task.title} · ${formatWeekRange(task.planningStartDate, task.planningEndDate)}`}
       >
@@ -280,10 +290,10 @@ const PlanningView = ({
             type="button"
             onPointerDown={(event) => startResize(event, task, 'start')}
             onClick={(event) => event.stopPropagation()}
-            className="flex h-full w-3 shrink-0 cursor-ew-resize items-center justify-center bg-black/10 hover:bg-black/20"
+            className="flex h-full w-3 shrink-0 cursor-ew-resize items-center justify-center bg-black/5 hover:bg-black/10"
             aria-label={`Modifier le début de ${task.title}`}
           >
-            <span className="h-4 w-0.5 rounded bg-white/70" />
+            <span className="h-4 w-0.5 rounded opacity-60" style={{ backgroundColor: colors.text }} />
           </button>
         )}
         <span className="min-w-0 flex-1 truncate px-2">{task.title}</span>
@@ -293,10 +303,10 @@ const PlanningView = ({
             type="button"
             onPointerDown={(event) => startResize(event, task, 'end')}
             onClick={(event) => event.stopPropagation()}
-            className="flex h-full w-3 shrink-0 cursor-ew-resize items-center justify-center bg-black/10 hover:bg-black/20"
+            className="flex h-full w-3 shrink-0 cursor-ew-resize items-center justify-center bg-black/5 hover:bg-black/10"
             aria-label={`Modifier la fin de ${task.title}`}
           >
-            <span className="h-4 w-0.5 rounded bg-white/70" />
+            <span className="h-4 w-0.5 rounded opacity-60" style={{ backgroundColor: colors.text }} />
           </button>
         )}
       </div>
@@ -374,7 +384,16 @@ const PlanningView = ({
             >
               <GripVertical className="h-3.5 w-3.5 text-slate-400" />
               <span className="max-w-48 truncate">{task.title}</span>
-              <span className="text-[10px] text-slate-400">{task.priority}</span>
+              <span
+                className="max-w-28 truncate rounded-md border px-1.5 py-0.5 text-[10px] font-semibold"
+                style={{
+                  backgroundColor: getCompartmentColors(task.compartment).bg,
+                  color: getCompartmentColors(task.compartment).text,
+                  borderColor: getCompartmentColors(task.compartment).border,
+                }}
+              >
+                {task.compartment || 'Sans compartiment'}
+              </span>
             </button>
           ))}
           {unplannedTasks.length === 0 && <p className="py-2 text-xs text-slate-400">Toutes les tâches actives visibles sont planifiées.</p>}
@@ -404,20 +423,8 @@ const PlanningView = ({
               </div>
             </div>
 
-            <div className="grid h-14 border-b border-dashed border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20" style={{ gridTemplateColumns: `260px ${timelineWidth}px` }}>
-              <div className="sticky left-0 z-30 flex items-center gap-2 border-r border-blue-200 bg-blue-50 px-4 text-xs font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300">
-                <CalendarRange className="h-4 w-4" /> Déposer ici
-              </div>
-              {renderTimelineGrid('bg-blue-50/20 dark:bg-blue-950/10')}
-            </div>
-
             {groups.map(([groupName, groupTasks]) => {
-              const compartment = compartments.find((item) => item.name === groupName)
-              const colors = {
-                bg: compartment?.color_bg || '#F1F5F9',
-                text: compartment?.color_text || '#334155',
-                border: compartment?.color_border || '#CBD5E1',
-              }
+              const colors = getCompartmentColors(groupName)
               return (
                 <React.Fragment key={groupName}>
                   <div className="grid h-10 border-b border-slate-200 dark:border-slate-700" style={{ gridTemplateColumns: `260px ${timelineWidth}px` }}>
