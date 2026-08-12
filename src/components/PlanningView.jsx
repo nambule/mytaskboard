@@ -2,15 +2,17 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CalendarRange,
   CalendarX,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   GripVertical,
   LocateFixed,
   Plus,
+  ArrowUpDown,
 } from 'lucide-react'
 import StickyBoardScrollbar from './StickyBoardScrollbar'
 import PlanningPeriodModal from './PlanningPeriodModal'
-import { STATUS_LABELS } from '../utils/constants'
+import { PRIORITY_RANK, STATUS_LABELS } from '../utils/constants'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const ZOOM_CONFIG = {
@@ -92,6 +94,22 @@ const PlanningView = ({
   const [resizeDraft, setResizeDraft] = useState(null)
   const [periodResizeDraft, setPeriodResizeDraft] = useState(null)
   const [periodEditor, setPeriodEditor] = useState(null)
+  const [planningTaskSort, setPlanningTaskSort] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('kanban-planning-task-sort')
+      return ['startDate', 'alphabetical', 'priority'].includes(saved) ? saved : 'startDate'
+    } catch (_) {
+      return 'startDate'
+    }
+  })
+  const [collapsedCompartments, setCollapsedCompartments] = useState(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('kanban-planning-collapsed-compartments') || '[]')
+      return new Set(Array.isArray(saved) ? saved : [])
+    } catch (_) {
+      return new Set()
+    }
+  })
   const [viewStart, setViewStart] = useState(() => {
     try {
       const saved = sessionStorage.getItem('kanban-planning-start')
@@ -116,9 +134,36 @@ const PlanningView = ({
     }
   }, [viewStart])
 
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        'kanban-planning-collapsed-compartments',
+        JSON.stringify(Array.from(collapsedCompartments)),
+      )
+    } catch (_) {
+      // Le repli reste utilisable même si le stockage de session est indisponible.
+    }
+  }, [collapsedCompartments])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('kanban-planning-task-sort', planningTaskSort)
+    } catch (_) {
+      // Le tri reste utilisable même si le stockage de session est indisponible.
+    }
+  }, [planningTaskSort])
+
+  const toggleCompartment = (compartmentName) => {
+    setCollapsedCompartments((current) => {
+      const next = new Set(current)
+      if (next.has(compartmentName)) next.delete(compartmentName)
+      else next.add(compartmentName)
+      return next
+    })
+  }
+
   const plannedTasks = useMemo(() => tasks
-    .filter((task) => !task.planningExcluded && task.planningStartDate && task.planningEndDate)
-    .sort((a, b) => a.planningStartDate.localeCompare(b.planningStartDate)), [tasks])
+    .filter((task) => !task.planningExcluded && task.planningStartDate && task.planningEndDate), [tasks])
   const unplannedTasks = useMemo(() => tasks
     .filter((task) => (
       task.status !== 'Done'
@@ -135,8 +180,24 @@ const PlanningView = ({
       if (!groupMap.has(name)) groupMap.set(name, [])
       groupMap.get(name).push(task)
     })
-    return Array.from(groupMap.entries()).filter(([, groupTasks]) => groupTasks.length > 0)
-  }, [compartments, plannedTasks])
+    const compareTasks = (first, second) => {
+      if (planningTaskSort === 'alphabetical') {
+        return first.title.localeCompare(second.title, 'fr', { sensitivity: 'base' })
+      }
+      if (planningTaskSort === 'priority') {
+        const priorityDifference = (PRIORITY_RANK[first.priority] || 99) - (PRIORITY_RANK[second.priority] || 99)
+        if (priorityDifference !== 0) return priorityDifference
+      } else {
+        const dateDifference = first.planningStartDate.localeCompare(second.planningStartDate)
+        if (dateDifference !== 0) return dateDifference
+      }
+      return first.title.localeCompare(second.title, 'fr', { sensitivity: 'base' })
+    }
+
+    return Array.from(groupMap.entries())
+      .filter(([, groupTasks]) => groupTasks.length > 0)
+      .map(([groupName, groupTasks]) => [groupName, [...groupTasks].sort(compareTasks)])
+  }, [compartments, plannedTasks, planningTaskSort])
 
   const getCompartmentColors = (compartmentName) => {
     const compartment = compartments.find((item) => item.name === compartmentName)
@@ -496,13 +557,14 @@ const PlanningView = ({
 
   const mobileGroups = useMemo(() => {
     const formatter = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
-    return plannedTasks.reduce((result, task) => {
+    const sortedTasks = groups.flatMap(([, groupTasks]) => groupTasks)
+    return sortedTasks.reduce((result, task) => {
       const label = formatter.format(parseDate(task.planningStartDate))
       if (!result[label]) result[label] = []
       result[label].push(task)
       return result
     }, {})
-  }, [plannedTasks])
+  }, [groups])
 
   return (
     <section className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6" aria-labelledby="planning-title">
@@ -512,6 +574,20 @@ const PlanningView = ({
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Positionnement précis à la semaine, lecture macro sur plusieurs mois.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
+            <span className="sr-only">Trier les tâches du planning</span>
+            <select
+              value={planningTaskSort}
+              onChange={(event) => setPlanningTaskSort(event.target.value)}
+              className="bg-transparent text-xs font-semibold text-slate-700 outline-none dark:text-slate-200"
+              aria-label="Trier les tâches du planning"
+            >
+              <option value="startDate">Date de début</option>
+              <option value="alphabetical">Alphabétique</option>
+              <option value="priority">Priorité P1 → P5</option>
+            </select>
+          </label>
           <button type="button" onClick={() => setPeriodEditor({ mode: 'new' })} className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700">
             <Plus className="h-3.5 w-3.5" /> Nouvelle période
           </button>
@@ -623,15 +699,27 @@ const PlanningView = ({
 
             {groups.map(([groupName, groupTasks]) => {
               const colors = getCompartmentColors(groupName)
+              const isCollapsed = collapsedCompartments.has(groupName)
               return (
                 <React.Fragment key={groupName}>
                   <div className="grid h-10 border-b border-slate-200 dark:border-slate-700" style={{ gridTemplateColumns: `260px ${timelineWidth}px` }}>
-                    <div className="sticky left-0 z-30 flex items-center justify-between border-r px-4 text-xs font-bold" style={{ backgroundColor: colors.bg, color: colors.text, borderColor: colors.border }}>
-                      <span>{groupName}</span><span className="opacity-60">{groupTasks.length}</span>
-                    </div>
-                    <div style={{ backgroundColor: colors.bg }} className="opacity-50" />
+                    <button
+                      type="button"
+                      onClick={() => toggleCompartment(groupName)}
+                      className="sticky left-0 z-30 flex items-center justify-between border-r px-4 text-left text-xs font-bold focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-400"
+                      style={{ backgroundColor: colors.bg, color: colors.text, borderColor: colors.border }}
+                      aria-expanded={!isCollapsed}
+                      aria-label={`${isCollapsed ? 'Déplier' : 'Replier'} le compartiment ${groupName}`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+                        <span className="truncate">{groupName}</span>
+                      </span>
+                      <span className="opacity-60">{groupTasks.length}</span>
+                    </button>
+                    <button type="button" onClick={() => toggleCompartment(groupName)} style={{ backgroundColor: colors.bg }} className="opacity-50" aria-label={`${isCollapsed ? 'Déplier' : 'Replier'} le compartiment ${groupName}`} tabIndex={-1} />
                   </div>
-                  {groupTasks.map((task) => (
+                  {!isCollapsed && groupTasks.map((task) => (
                     <div key={task.id} className="grid h-14 border-b border-slate-100 last:border-b-0 dark:border-slate-800" style={{ gridTemplateColumns: `260px ${timelineWidth}px` }}>
                       <div className="sticky left-0 z-30 flex min-w-0 items-center gap-2 border-r border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
                         <button type="button" onClick={() => onOpenTask(task.id)} className="min-w-0 flex-1 text-left">
