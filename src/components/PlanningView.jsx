@@ -9,6 +9,7 @@ import {
   LocateFixed,
   Plus,
   ArrowUpDown,
+  StickyNote,
 } from 'lucide-react'
 import StickyBoardScrollbar from './StickyBoardScrollbar'
 import PlanningPeriodModal from './PlanningPeriodModal'
@@ -108,6 +109,24 @@ const PlanningView = ({
       return 'startDate'
     }
   })
+  const [remindersCollapsed, setRemindersCollapsed] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('kanban-planning-reminders-collapsed')
+      const parsed = saved === null ? true : JSON.parse(saved)
+      return typeof parsed === 'boolean' ? parsed : true
+    } catch (_) {
+      return true
+    }
+  })
+  const [unplannedCollapsed, setUnplannedCollapsed] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('kanban-planning-unplanned-collapsed')
+      const parsed = saved === null ? true : JSON.parse(saved)
+      return typeof parsed === 'boolean' ? parsed : true
+    } catch (_) {
+      return true
+    }
+  })
   const [collapsedCompartments, setCollapsedCompartments] = useState(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem('kanban-planning-collapsed-compartments') || '[]')
@@ -159,6 +178,22 @@ const PlanningView = ({
     }
   }, [planningTaskSort])
 
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('kanban-planning-reminders-collapsed', JSON.stringify(remindersCollapsed))
+    } catch (_) {
+      // Le tiroir reste utilisable même si le stockage de session est indisponible.
+    }
+  }, [remindersCollapsed])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('kanban-planning-unplanned-collapsed', JSON.stringify(unplannedCollapsed))
+    } catch (_) {
+      // Le tiroir reste utilisable même si le stockage de session est indisponible.
+    }
+  }, [unplannedCollapsed])
+
   const toggleCompartment = (compartmentName) => {
     setCollapsedCompartments((current) => {
       const next = new Set(current)
@@ -177,6 +212,9 @@ const PlanningView = ({
       && !task.planningExcluded
       && (!task.planningStartDate || !task.planningEndDate)
     )), [tasks])
+  const reminderTasks = useMemo(() => tasks
+    .filter((task) => task.planningExcluded)
+    .sort((first, second) => first.title.localeCompare(second.title, 'fr', { sensitivity: 'base' })), [tasks])
 
   const groups = useMemo(() => {
     const groupMap = new Map()
@@ -636,41 +674,106 @@ const PlanningView = ({
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">À planifier</h3>
-            <p className="text-xs text-slate-500">Glissez une tâche sur la frise pour lui attribuer une semaine.</p>
-          </div>
-          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-800">{unplannedTasks.length}</span>
-        </div>
-        <div className="scrollbar-subtle mt-3 flex max-h-[7.5rem] flex-wrap content-start gap-2 overflow-y-auto pb-1 pr-1">
-          {unplannedTasks.map((task) => (
-            <button
-              key={task.id}
-              type="button"
-              draggable
-              onDragStart={(event) => handleDragStart(event, task)}
-              onClick={() => onOpenTask(task.id)}
-              className="inline-flex shrink-0 cursor-grab items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-            >
-              <GripVertical className="h-3.5 w-3.5 text-slate-400" />
-              <span className="max-w-48 truncate">{task.title}</span>
-              <span
-                className="max-w-28 truncate rounded-md border px-1.5 py-0.5 text-[10px] font-semibold"
-                style={{
-                  backgroundColor: getCompartmentColors(task.compartment).bg,
-                  color: getCompartmentColors(task.compartment).text,
-                  borderColor: getCompartmentColors(task.compartment).border,
-                }}
-              >
-                {task.compartment || 'Sans compartiment'}
+      <section className="mt-5 overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/40 dark:border-blue-900 dark:bg-blue-950/15" aria-labelledby="planning-unplanned-title">
+        <button
+          type="button"
+          onClick={() => setUnplannedCollapsed((current) => !current)}
+          disabled={unplannedTasks.length === 0}
+          className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-400 disabled:cursor-default"
+          aria-expanded={unplannedTasks.length > 0 ? !unplannedCollapsed : undefined}
+        >
+          <span className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              <GripVertical className="h-3.5 w-3.5" />
+            </span>
+            <span>
+              <span id="planning-unplanned-title" className="block text-sm font-bold text-blue-950 dark:text-blue-100">À planifier</span>
+              <span className="block text-[11px] text-blue-700/70 dark:text-blue-300/70">
+                {unplannedTasks.length > 0 ? 'Glissez une tâche sur la frise' : 'Toutes les tâches actives sont planifiées'}
               </span>
-            </button>
-          ))}
-          {unplannedTasks.length === 0 && <p className="py-2 text-xs text-slate-400">Toutes les tâches actives visibles sont planifiées.</p>}
-        </div>
-      </div>
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-300">
+            {unplannedTasks.length}
+            {unplannedTasks.length > 0 && <ChevronDown className={`h-4 w-4 transition-transform ${unplannedCollapsed ? '-rotate-90' : ''}`} />}
+          </span>
+        </button>
+
+        {unplannedTasks.length > 0 && !unplannedCollapsed && (
+          <div className="scrollbar-subtle flex max-h-[7.5rem] flex-wrap content-start gap-2 overflow-y-auto border-t border-blue-200 px-3 py-2 dark:border-blue-900">
+            {unplannedTasks.map((task) => (
+              <button
+                key={task.id}
+                type="button"
+                draggable
+                onDragStart={(event) => handleDragStart(event, task)}
+                onClick={() => onOpenTask(task.id)}
+                className="inline-flex shrink-0 cursor-grab items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-700 shadow-sm hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <GripVertical className="h-3.5 w-3.5 text-slate-400" />
+                <span className="max-w-48 truncate">{task.title}</span>
+                <span
+                  className="max-w-28 truncate rounded-md border px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{
+                    backgroundColor: getCompartmentColors(task.compartment).bg,
+                    color: getCompartmentColors(task.compartment).text,
+                    borderColor: getCompartmentColors(task.compartment).border,
+                  }}
+                >
+                  {task.compartment || 'Sans compartiment'}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {reminderTasks.length > 0 && (
+        <section className="mt-3 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/15" aria-labelledby="planning-reminders-title">
+          <button
+            type="button"
+            onClick={() => setRemindersCollapsed((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amber-400"
+            aria-expanded={!remindersCollapsed}
+          >
+            <span className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                <StickyNote className="h-3.5 w-3.5" />
+              </span>
+              <span>
+                <span id="planning-reminders-title" className="block text-sm font-bold text-amber-900 dark:text-amber-100">Pense-bêtes</span>
+                <span className="block text-[11px] text-amber-700/70 dark:text-amber-300/70">Repères sans date de planification</span>
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
+              {reminderTasks.length}
+              <ChevronDown className={`h-4 w-4 transition-transform ${remindersCollapsed ? '-rotate-90' : ''}`} />
+            </span>
+          </button>
+
+          {!remindersCollapsed && (
+            <div className="scrollbar-subtle flex max-h-[5.75rem] flex-wrap content-start gap-2 overflow-y-auto border-t border-amber-200 px-3 py-2 dark:border-amber-900">
+              {reminderTasks.map((task) => {
+                const colors = getCompartmentColors(task.compartment)
+                return (
+                  <button
+                    key={task.id}
+                    type="button"
+                    onClick={() => onOpenTask(task.id)}
+                    className="inline-flex min-w-0 items-center gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-700 shadow-sm hover:border-amber-300 dark:border-amber-800 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <StickyNote className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                    <span className="max-w-48 truncate">{task.title}</span>
+                    <span className="max-w-28 truncate rounded-md border px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: colors.bg, color: colors.text, borderColor: colors.border }}>
+                      {task.compartment || 'Sans compartiment'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="mt-4 hidden md:block">
         <div ref={timelineScrollRef} className="scrollbar-subtle overflow-x-auto rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
@@ -812,22 +915,6 @@ const PlanningView = ({
             </div>
           </div>
         ))}
-        {unplannedTasks.length > 0 && (
-          <div>
-            <h3 className="font-display mb-2 text-sm font-bold text-slate-500 dark:text-slate-300">À planifier</h3>
-            <div className="space-y-2">
-              {unplannedTasks.map((task) => (
-                <div key={task.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-                  <button type="button" onClick={() => onOpenTask(task.id)} className="min-w-0 flex-1 truncate text-left text-sm font-semibold">{task.title}</button>
-                  <button type="button" onClick={() => {
-                    const start = startOfWeek()
-                    onUpdateTask(task.id, { planningStartDate: toISODate(start), planningEndDate: toISODate(endOfWeek(start)) })
-                  }} className="shrink-0 rounded-lg bg-[#356AE6] px-3 py-1.5 text-xs font-semibold text-white">Cette semaine</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <p className="mt-3 text-xs text-slate-400">Période visible : {formatWeekRange(toISODate(viewStart), toISODate(visibleEnd))}</p>

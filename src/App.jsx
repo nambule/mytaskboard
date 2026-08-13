@@ -79,6 +79,7 @@ const loadSessionPreferences = () => {
     priorityFilter: DEFAULT_PRIORITY_FILTER,
     statusFilterState: DEFAULT_STATUS_FILTER,
     nextActionFilter: 'All',
+    showReminders: true,
     sortBy: 'none',
     currentView: 'board',
     planningZoom: '3m',
@@ -100,6 +101,9 @@ const loadSessionPreferences = () => {
       nextActionFilter: ['All', ...WHEN_OPTIONS].includes(saved.nextActionFilter)
         ? saved.nextActionFilter
         : defaults.nextActionFilter,
+      showReminders: typeof saved.showReminders === 'boolean'
+        ? saved.showReminders
+        : defaults.showReminders,
       sortBy: ['none', 'priorityAsc', 'priorityDesc', 'whenAsc', 'whenDesc'].includes(saved.sortBy)
         ? saved.sortBy
         : defaults.sortBy,
@@ -138,6 +142,7 @@ function App() {
   const [priorityFilter, setPriorityFilter] = useState(sessionPreferences.priorityFilter)
   const [statusFilterState, setStatusFilterState] = useState(sessionPreferences.statusFilterState)
   const [nextActionFilter, setNextActionFilter] = useState(sessionPreferences.nextActionFilter)
+  const [showReminders, setShowReminders] = useState(sessionPreferences.showReminders)
   const [sortBy, setSortBy] = useState(sessionPreferences.sortBy)
   const [currentView, setCurrentView] = useState(sessionPreferences.currentView)
   const [planningZoom, setPlanningZoom] = useState(sessionPreferences.planningZoom)
@@ -172,6 +177,7 @@ function App() {
         priorityFilter,
         statusFilterState,
         nextActionFilter,
+        showReminders,
         sortBy,
         currentView,
         planningZoom,
@@ -186,6 +192,7 @@ function App() {
     priorityFilter,
     statusFilterState,
     nextActionFilter,
+    showReminders,
     sortBy,
     currentView,
     planningZoom,
@@ -357,11 +364,12 @@ function App() {
       || task.subtasks?.some((subtask) => subtask.title?.toLowerCase().includes(searchTerm))
     const matchesPriority = priorityFilter[task.priority]
     const matchesStatus = statusFilterState[task.status]
+    const matchesReminderType = showReminders || !task.planningExcluded
     const matchesNextAction = nextActionFilter === 'All'
       || (WHEN_ORDER[task.when || ''] || 99) <= (WHEN_ORDER[nextActionFilter] || 99)
 
-    return matchesSearch && matchesPriority && matchesStatus && matchesNextAction
-  }), [tasks, search, priorityFilter, statusFilterState, nextActionFilter])
+    return matchesSearch && matchesPriority && matchesStatus && matchesNextAction && matchesReminderType
+  }), [tasks, search, priorityFilter, statusFilterState, nextActionFilter, showReminders])
 
   // Colonnes affichées (masquer "Terminé" si vide et pas filtré)
   const displayedColumns = useMemo(() => {
@@ -417,8 +425,16 @@ function App() {
       })
     }
 
+    if (currentView === 'planning' && !showReminders) {
+      filters.push({
+        key: 'reminders',
+        label: 'Pense-bêtes masqués',
+        onRemove: () => setShowReminders(true),
+      })
+    }
+
     return filters
-  }, [priorityFilter, statusFilterState, nextActionFilter])
+  }, [priorityFilter, statusFilterState, nextActionFilter, showReminders, currentView])
 
   // Check if all compartments are empty (no tasks at all)
   const hasAnyTasks = Object.keys(tasks).length > 0
@@ -502,6 +518,7 @@ function App() {
     setPriorityFilter({ ...DEFAULT_PRIORITY_FILTER })
     setStatusFilterState({ ...DEFAULT_STATUS_FILTER })
     setNextActionFilter('All')
+    setShowReminders(true)
   }
 
   // Affichage du chargement de l'authentification
@@ -750,6 +767,8 @@ function App() {
         }))}
         nextActionFilter={nextActionFilter}
         onNextActionFilterChange={setNextActionFilter}
+        showReminders={showReminders}
+        onShowRemindersChange={setShowReminders}
         onResetFilters={resetFilters}
         activeFilterCount={activeFilters.length}
         activeFilters={activeFilters}

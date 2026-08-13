@@ -34,6 +34,8 @@ const BoardToolbar = ({
   onStatusFilterChange,
   nextActionFilter,
   onNextActionFilterChange,
+  showReminders,
+  onShowRemindersChange,
   onResetFilters,
   activeFilterCount,
   activeFilters,
@@ -132,7 +134,7 @@ const BoardToolbar = ({
             </summary>
             <div className="absolute left-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900 lg:left-auto lg:right-0">
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-sm font-bold text-slate-900 dark:text-white">Affiner le tableau</h2>
+                <h2 className="font-display text-sm font-bold text-slate-900 dark:text-white">Affiner les tâches</h2>
                 <button
                   type="button"
                   onClick={onResetFilters}
@@ -165,6 +167,22 @@ const BoardToolbar = ({
                   ))}
                 </div>
               </fieldset>
+
+              {activeView === 'planning' && <fieldset className="mt-5">
+                <legend className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Type de tâche</legend>
+                <label className="mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200">
+                  <span>
+                    <span className="block font-medium">Afficher les pense-bêtes</span>
+                    <span className="mt-0.5 block text-xs text-slate-400">Tâches sans planification ni prochaine action</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showReminders}
+                    onChange={(event) => onShowRemindersChange(event.target.checked)}
+                    className="h-4 w-4 shrink-0 rounded border-slate-300 text-[#356AE6]"
+                  />
+                </label>
+              </fieldset>}
 
               <fieldset className="mt-5">
                 <legend className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Statut</legend>
