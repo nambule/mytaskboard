@@ -328,6 +328,30 @@ function App() {
   const filterRef = useRef(null)
   const viewRef = useRef(null)
   const boardScrollRef = useRef(null)
+  const boardHeaderTrackRef = useRef(null)
+  const [boardToolbarHeight, setBoardToolbarHeight] = useState(0)
+
+  useEffect(() => {
+    const toolbar = document.getElementById('board-toolbar')
+    if (!toolbar) return undefined
+
+    const updateToolbarHeight = () => setBoardToolbarHeight(Math.ceil(toolbar.getBoundingClientRect().height))
+    updateToolbarHeight()
+
+    const resizeObserver = new ResizeObserver(updateToolbarHeight)
+    resizeObserver.observe(toolbar)
+    window.addEventListener('resize', updateToolbarHeight)
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', updateToolbarHeight)
+    }
+  }, [authLoading, tasksLoading, quickLoading])
+
+  const syncBoardHeaderScroll = (event) => {
+    if (boardHeaderTrackRef.current) {
+      boardHeaderTrackRef.current.style.transform = `translateX(-${event.currentTarget.scrollLeft}px)`
+    }
+  }
 
   // Fermer les filtres et menu visualisation au clic extérieur ou Escape
   useEffect(() => {
@@ -474,6 +498,12 @@ function App() {
     }
   }, [activeMobileColumn, displayedColumns])
 
+  useEffect(() => {
+    if (currentView !== 'board' || !boardHeaderTrackRef.current) return
+    const scrollLeft = boardScrollRef.current?.scrollLeft || 0
+    boardHeaderTrackRef.current.style.transform = `translateX(-${scrollLeft}px)`
+  }, [currentView, groupBy, displayedColumns])
+
   const activeFilters = useMemo(() => {
     const filters = []
 
@@ -524,6 +554,55 @@ function App() {
   // Check if all compartments are empty (no tasks at all)
   const hasAnyTasks = Object.keys(tasks).length > 0
   const allColumnsEmpty = displayedColumns.every(col => (visibleIdsByColumn[col]?.length || 0) === 0)
+
+  const getColumnHeaderStyle = (column) => {
+    if (groupBy === 'compartment') {
+      const compartment = compartmentObjects.find((item) => item.name === column)
+      const colors = {
+        bg: compartment?.color_bg || COMPARTMENT_COLORS[column]?.bg || '#DBEAFE',
+        text: compartment?.color_text || COMPARTMENT_COLORS[column]?.text || '#1E40AF',
+        border: compartment?.color_border || COMPARTMENT_COLORS[column]?.border || '#BFDBFE',
+      }
+      return {
+        backgroundColor: colors.bg,
+        color: colors.text,
+        borderColor: colors.border,
+      }
+    }
+
+    const colors = groupBy === 'priority'
+      ? PRIORITY_COLUMN_COLORS[column]
+      : STATUS_COLUMN_COLORS[column]
+    return {
+      backgroundColor: colors.bg,
+      color: colors.text,
+      borderColor: colors.border,
+    }
+  }
+
+  const renderColumnHeader = (column, className = '') => (
+    <div
+      className={`flex min-w-0 items-center justify-between rounded-xl border px-3 py-3 ${className}`}
+      style={getColumnHeaderStyle(column)}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="font-display truncate text-sm font-bold text-current">
+          {groupBy === 'status' ? STATUS_LABELS[column] : column}
+        </div>
+        <span className="shrink-0 rounded-full bg-white/60 px-2 py-0.5 text-[11px] font-semibold text-current shadow-sm">
+          {visibleIdsByColumn[column]?.length || 0}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={() => openCreate(column)}
+        className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-current transition-colors hover:bg-white/50"
+        aria-label={`Ajouter une tâche dans ${groupBy === 'status' ? STATUS_LABELS[column] : column}`}
+      >
+        <Plus className="h-4 w-4" /> Ajouter
+      </button>
+    </div>
+  )
 
   // Gestion du drag & drop
   const onDragEnd = (result) => {
@@ -1125,7 +1204,35 @@ Quick Task
         </div>
 
         <DragDropContext onDragEnd={onDragEnd}>
-          <div ref={boardScrollRef} className="board-scroll scrollbar-subtle overflow-x-auto pb-3">
+          <div
+            className="sticky z-40 bg-[#F6F7F9] pb-2 dark:bg-slate-950 md:hidden"
+            style={{ top: boardToolbarHeight }}
+          >
+            {activeMobileColumn && renderColumnHeader(activeMobileColumn)}
+          </div>
+
+          <div
+            className="sticky z-40 -mx-4 hidden overflow-hidden bg-[#F6F7F9] px-4 pb-2 dark:bg-slate-950 sm:-mx-6 sm:px-6 md:block"
+            style={{ top: boardToolbarHeight }}
+          >
+            <div
+              ref={boardHeaderTrackRef}
+              className="board-grid gap-4"
+              style={{ '--board-columns': displayedColumns.length, willChange: 'transform' }}
+            >
+              {displayedColumns.map((column) => (
+                <div key={column} className="min-w-0">
+                  {renderColumnHeader(column)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div
+            ref={boardScrollRef}
+            onScroll={syncBoardHeaderScroll}
+            className="board-scroll scrollbar-subtle overflow-x-auto pb-3"
+          >
           <div
             className="board-grid gap-4"
             style={{ '--board-columns': displayedColumns.length }}
@@ -1137,51 +1244,6 @@ Quick Task
                 className={`${activeMobileColumn === col ? 'flex' : 'hidden'} min-w-0 flex-col md:flex`}
               >
                 <div className="mb-2 min-w-0">
-                  {/* En-tête de colonne */}
-                  <div 
-                    className="mb-2 flex items-center justify-between rounded-xl border px-3 py-3"
-                    style={(() => {
-                      if (groupBy === 'compartment') {
-                          const compartmentObj = compartmentObjects.find(c => c.name === col)
-                          const colors = {
-                            bg: compartmentObj?.color_bg || COMPARTMENT_COLORS[col]?.bg || '#DBEAFE',
-                            text: compartmentObj?.color_text || COMPARTMENT_COLORS[col]?.text || '#1E40AF',
-                            border: compartmentObj?.color_border || COMPARTMENT_COLORS[col]?.border || '#BFDBFE',
-                          }
-                          return {
-                            backgroundColor: colors.bg,
-                            color: colors.text,
-                            borderColor: colors.border,
-                          }
-                      }
-
-                      const colors = groupBy === 'priority'
-                          ? PRIORITY_COLUMN_COLORS[col]
-                          : STATUS_COLUMN_COLORS[col]
-                      return {
-                        backgroundColor: colors.bg,
-                        color: colors.text,
-                        borderColor: colors.border,
-                      }
-                    })()}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="font-display text-sm font-bold text-current">
-                        {groupBy === 'status' ? STATUS_LABELS[col] : col}
-                      </div>
-                      <span className="rounded-full bg-white/60 px-2 py-0.5 text-[11px] font-semibold text-current shadow-sm">
-                        {visibleIdsByColumn[col]?.length || 0}
-                      </span>
-                    </div>
-                    <button 
-                      onClick={() => openCreate(col)} 
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-current transition-colors hover:bg-white/50"
-                      aria-label={`Ajouter une tâche dans ${groupBy === 'status' ? STATUS_LABELS[col] : col}`}
-                    >
-                      <Plus className="h-4 w-4" /> Ajouter
-                    </button>
-                  </div>
-
                   {/* Zone de drop */}
                   <Droppable droppableId={col}>
                     {(provided, snapshot) => (
