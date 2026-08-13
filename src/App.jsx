@@ -31,6 +31,7 @@ import {
 } from './utils/constants'
 import { useCompartments } from './hooks/useCompartments'
 import { badgeStyle, compStyle, styleWhen } from './utils/helpers'
+import { userPreferenceService } from './services/userPreferenceService'
 
 const SESSION_PREFERENCES_KEY = 'kanban-session-preferences'
 const DEFAULT_PRIORITY_FILTER = {
@@ -46,6 +47,21 @@ const DEFAULT_STATUS_FILTER = {
   'In Progress': true,
   Done: false,
   Cancelled: false,
+}
+const DEFAULT_UI_PREFERENCES = {
+  groupBy: 'compartment',
+  viewMode: 'full',
+  search: '',
+  priorityFilter: DEFAULT_PRIORITY_FILTER,
+  statusFilterState: DEFAULT_STATUS_FILTER,
+  nextActionFilter: 'All',
+  showReminders: true,
+  sortBy: 'none',
+  currentView: 'board',
+  planningZoom: '3m',
+  darkMode: false,
+  showSchedulingFields: false,
+  planningPreferences: {},
 }
 const PRIORITY_COLUMN_COLORS = {
   P1: { bg: '#FEE2E2', text: '#991B1B', border: '#FECACA' },
@@ -71,52 +87,41 @@ const restoreBooleanFilter = (savedFilter, defaultFilter) => (
   )
 )
 
+const normalizePreferences = (saved = {}, defaults = DEFAULT_UI_PREFERENCES) => ({
+  groupBy: ['compartment', 'priority', 'status'].includes(saved.groupBy) ? saved.groupBy : defaults.groupBy,
+  viewMode: ['compact', 'standard', 'full'].includes(saved.viewMode) ? saved.viewMode : defaults.viewMode,
+  search: typeof saved.search === 'string' ? saved.search : defaults.search,
+  priorityFilter: restoreBooleanFilter(saved.priorityFilter, DEFAULT_PRIORITY_FILTER),
+  statusFilterState: restoreBooleanFilter(saved.statusFilterState, DEFAULT_STATUS_FILTER),
+  nextActionFilter: ['All', ...WHEN_OPTIONS].includes(saved.nextActionFilter) ? saved.nextActionFilter : defaults.nextActionFilter,
+  showReminders: typeof saved.showReminders === 'boolean' ? saved.showReminders : defaults.showReminders,
+  sortBy: ['none', 'priorityAsc', 'priorityDesc', 'whenAsc', 'whenDesc'].includes(saved.sortBy) ? saved.sortBy : defaults.sortBy,
+  currentView: ['board', 'planning'].includes(saved.currentView) ? saved.currentView : defaults.currentView,
+  planningZoom: ['1m', '3m', '6m', '1y', '2y'].includes(saved.planningZoom) ? saved.planningZoom : defaults.planningZoom,
+  darkMode: typeof saved.darkMode === 'boolean' ? saved.darkMode : defaults.darkMode,
+  showSchedulingFields: typeof saved.showSchedulingFields === 'boolean' ? saved.showSchedulingFields : defaults.showSchedulingFields,
+  planningPreferences: saved.planningPreferences && typeof saved.planningPreferences === 'object'
+    ? saved.planningPreferences
+    : defaults.planningPreferences,
+})
+
 const loadSessionPreferences = () => {
-  const defaults = {
-    groupBy: 'compartment',
-    viewMode: 'full',
-    search: '',
-    priorityFilter: DEFAULT_PRIORITY_FILTER,
-    statusFilterState: DEFAULT_STATUS_FILTER,
-    nextActionFilter: 'All',
-    showReminders: true,
-    sortBy: 'none',
-    currentView: 'board',
-    planningZoom: '3m',
+  const localDefaults = {
+    ...DEFAULT_UI_PREFERENCES,
+    darkMode: (() => {
+      try { return JSON.parse(localStorage.getItem('kanban-dark-mode') || 'false') } catch (_) { return false }
+    })(),
+    showSchedulingFields: (() => {
+      try { return JSON.parse(localStorage.getItem('kanban-show-scheduling-fields') || 'false') } catch (_) { return false }
+    })(),
   }
 
   try {
     const saved = JSON.parse(sessionStorage.getItem(SESSION_PREFERENCES_KEY) || '{}')
-
-    return {
-      groupBy: ['compartment', 'priority', 'status'].includes(saved.groupBy)
-        ? saved.groupBy
-        : defaults.groupBy,
-      viewMode: ['compact', 'standard', 'full'].includes(saved.viewMode)
-        ? saved.viewMode
-        : defaults.viewMode,
-      search: typeof saved.search === 'string' ? saved.search : defaults.search,
-      priorityFilter: restoreBooleanFilter(saved.priorityFilter, DEFAULT_PRIORITY_FILTER),
-      statusFilterState: restoreBooleanFilter(saved.statusFilterState, DEFAULT_STATUS_FILTER),
-      nextActionFilter: ['All', ...WHEN_OPTIONS].includes(saved.nextActionFilter)
-        ? saved.nextActionFilter
-        : defaults.nextActionFilter,
-      showReminders: typeof saved.showReminders === 'boolean'
-        ? saved.showReminders
-        : defaults.showReminders,
-      sortBy: ['none', 'priorityAsc', 'priorityDesc', 'whenAsc', 'whenDesc'].includes(saved.sortBy)
-        ? saved.sortBy
-        : defaults.sortBy,
-      currentView: ['board', 'planning'].includes(saved.currentView)
-        ? saved.currentView
-        : defaults.currentView,
-      planningZoom: ['1m', '3m', '6m', '1y', '2y'].includes(saved.planningZoom)
-        ? saved.planningZoom
-        : defaults.planningZoom,
-    }
+    return normalizePreferences(saved, localDefaults)
   } catch (error) {
     console.warn('Unable to restore session preferences:', error)
-    return defaults
+    return localDefaults
   }
 }
 
@@ -129,14 +134,10 @@ function App() {
   // État local de l'interface
   const [groupBy, setGroupBy] = useState(sessionPreferences.groupBy)
   const [viewMode, setViewMode] = useState(sessionPreferences.viewMode)
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('kanban-dark-mode')
-    return saved ? JSON.parse(saved) : false
-  })
-  const [showSchedulingFields, setShowSchedulingFields] = useState(() => {
-    const saved = localStorage.getItem('kanban-show-scheduling-fields')
-    return saved ? JSON.parse(saved) : false
-  })
+  const [darkMode, setDarkMode] = useState(sessionPreferences.darkMode)
+  const [showSchedulingFields, setShowSchedulingFields] = useState(sessionPreferences.showSchedulingFields)
+  const [cloudPreferencesReady, setCloudPreferencesReady] = useState(false)
+  const [planningPreferences, setPlanningPreferences] = useState(sessionPreferences.planningPreferences)
   const { compartments: compartmentObjects, compartmentNames } = useCompartments()
   const [search, setSearch] = useState(sessionPreferences.search)
   const [priorityFilter, setPriorityFilter] = useState(sessionPreferences.priorityFilter)
@@ -181,6 +182,9 @@ function App() {
         sortBy,
         currentView,
         planningZoom,
+        darkMode,
+        showSchedulingFields,
+        planningPreferences,
       }))
     } catch (error) {
       console.warn('Unable to save session preferences:', error)
@@ -196,6 +200,9 @@ function App() {
     sortBy,
     currentView,
     planningZoom,
+    darkMode,
+    showSchedulingFields,
+    planningPreferences,
   ])
 
 
@@ -209,6 +216,84 @@ function App() {
     signOut, 
     isAuthenticated 
   } = useAuth()
+
+  const currentPreferences = useMemo(() => ({
+    groupBy,
+    viewMode,
+    search,
+    priorityFilter,
+    statusFilterState,
+    nextActionFilter,
+    showReminders,
+    sortBy,
+    currentView,
+    planningZoom,
+    darkMode,
+    showSchedulingFields,
+    planningPreferences,
+  }), [
+    groupBy,
+    viewMode,
+    search,
+    priorityFilter,
+    statusFilterState,
+    nextActionFilter,
+    showReminders,
+    sortBy,
+    currentView,
+    planningZoom,
+    darkMode,
+    showSchedulingFields,
+    planningPreferences,
+  ])
+
+  useEffect(() => {
+    let cancelled = false
+    setCloudPreferencesReady(false)
+    if (!user?.id) return () => { cancelled = true }
+
+    const loadCloudPreferences = async () => {
+      try {
+        const saved = await userPreferenceService.getPreferences(user.id)
+        if (cancelled) return
+        if (saved) {
+          const restored = normalizePreferences(saved, currentPreferences)
+          setGroupBy(restored.groupBy)
+          setViewMode(restored.viewMode)
+          setSearch(restored.search)
+          setPriorityFilter(restored.priorityFilter)
+          setStatusFilterState(restored.statusFilterState)
+          setNextActionFilter(restored.nextActionFilter)
+          setShowReminders(restored.showReminders)
+          setSortBy(restored.sortBy)
+          setCurrentView(restored.currentView)
+          setPlanningZoom(restored.planningZoom)
+          setDarkMode(restored.darkMode)
+          setShowSchedulingFields(restored.showSchedulingFields)
+          setPlanningPreferences(restored.planningPreferences)
+        }
+        setCloudPreferencesReady(true)
+      } catch (error) {
+        console.warn('Cloud preferences unavailable, keeping local preferences:', error)
+      }
+    }
+
+    loadCloudPreferences()
+    return () => { cancelled = true }
+    // Les préférences courantes servent uniquement de valeurs de repli au chargement du compte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user?.id || !cloudPreferencesReady) return undefined
+    const saveTimer = window.setTimeout(() => {
+      userPreferenceService.savePreferences(user.id, currentPreferences).catch((error) => {
+        console.warn('Unable to synchronize preferences:', error)
+      })
+    }, 500)
+
+    return () => window.clearTimeout(saveTimer)
+  }, [user?.id, cloudPreferencesReady, currentPreferences])
 
   // Hooks personnalisés pour les données
   const { 
@@ -1012,6 +1097,8 @@ Quick Task
           onCreatePeriod={createPeriod}
           onUpdatePeriod={updatePeriod}
           onDeletePeriod={deletePeriod}
+          syncedPreferences={planningPreferences}
+          onPreferencesChange={setPlanningPreferences}
         />
       ) : (
       <>

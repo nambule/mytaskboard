@@ -94,11 +94,14 @@ const PlanningView = ({
   onCreatePeriod,
   onUpdatePeriod,
   onDeletePeriod,
+  syncedPreferences = {},
+  onPreferencesChange,
 }) => {
   const timelineScrollRef = useRef(null)
   const calendarTrackRef = useRef(null)
   const resizeRef = useRef(null)
   const periodResizeRef = useRef(null)
+  const applyingSyncedPreferencesRef = useRef(false)
   const [resizeDraft, setResizeDraft] = useState(null)
   const [periodResizeDraft, setPeriodResizeDraft] = useState(null)
   const [periodEditor, setPeriodEditor] = useState(null)
@@ -217,6 +220,85 @@ const PlanningView = ({
       // Le tiroir reste utilisable même si le stockage de session est indisponible.
     }
   }, [unplannedCollapsed])
+
+  useEffect(() => {
+    const {
+      taskSort,
+      remindersAreCollapsed,
+      unplannedAreCollapsed,
+      collapsedCompartmentNames,
+      startDate,
+    } = syncedPreferences
+
+    const validStartDate = typeof startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(startDate)
+      ? startOfWeek(startDate)
+      : null
+    const nextCollapsedCompartments = Array.isArray(collapsedCompartmentNames)
+      ? new Set(collapsedCompartmentNames)
+      : null
+    const preferencesWillChange = (
+      (['startDate', 'alphabetical', 'priority'].includes(taskSort) && taskSort !== planningTaskSort)
+      || (typeof remindersAreCollapsed === 'boolean' && remindersAreCollapsed !== remindersCollapsed)
+      || (typeof unplannedAreCollapsed === 'boolean' && unplannedAreCollapsed !== unplannedCollapsed)
+      || (nextCollapsedCompartments && (
+        collapsedCompartments.size !== nextCollapsedCompartments.size
+        || Array.from(collapsedCompartments).some((name) => !nextCollapsedCompartments.has(name))
+      ))
+      || (validStartDate && !Number.isNaN(validStartDate.getTime())
+        && toISODate(viewStart) !== toISODate(validStartDate))
+    )
+
+    if (preferencesWillChange) applyingSyncedPreferencesRef.current = true
+
+    if (['startDate', 'alphabetical', 'priority'].includes(taskSort)) {
+      setPlanningTaskSort((current) => current === taskSort ? current : taskSort)
+    }
+    if (typeof remindersAreCollapsed === 'boolean') {
+      setRemindersCollapsed((current) => (
+        current === remindersAreCollapsed ? current : remindersAreCollapsed
+      ))
+    }
+    if (typeof unplannedAreCollapsed === 'boolean') {
+      setUnplannedCollapsed((current) => (
+        current === unplannedAreCollapsed ? current : unplannedAreCollapsed
+      ))
+    }
+    if (nextCollapsedCompartments) {
+      setCollapsedCompartments((current) => {
+        const unchanged = current.size === nextCollapsedCompartments.size
+          && Array.from(current).every((name) => nextCollapsedCompartments.has(name))
+        return unchanged ? current : nextCollapsedCompartments
+      })
+    }
+    if (validStartDate && !Number.isNaN(validStartDate.getTime())) {
+      setViewStart((current) => (
+        toISODate(current) === toISODate(validStartDate) ? current : validStartDate
+      ))
+    }
+    // Les valeurs locales sont volontairement lues uniquement lorsqu'une version distante arrive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncedPreferences])
+
+  useEffect(() => {
+    if (applyingSyncedPreferencesRef.current) {
+      applyingSyncedPreferencesRef.current = false
+      return
+    }
+    onPreferencesChange?.({
+      taskSort: planningTaskSort,
+      remindersAreCollapsed: remindersCollapsed,
+      unplannedAreCollapsed: unplannedCollapsed,
+      collapsedCompartmentNames: Array.from(collapsedCompartments),
+      startDate: toISODate(viewStart),
+    })
+  }, [
+    planningTaskSort,
+    remindersCollapsed,
+    unplannedCollapsed,
+    collapsedCompartments,
+    viewStart,
+    onPreferencesChange,
+  ])
 
   const toggleCompartment = (compartmentName) => {
     setCollapsedCompartments((current) => {

@@ -82,6 +82,7 @@ src/
      - `supabase-setup.sql` (additional setup)
      - `migration-planning-view.sql` (task planning dates and reminders)
      - `migration-planning-periods.sql` (independent planning periods)
+     - `migration-user-preferences.sql` (interface preferences synchronized between browsers)
    - Copy `.env.example` to `.env` and add your credentials:
    ```env
    VITE_SUPABASE_URL=your_supabase_project_url
