@@ -34,6 +34,12 @@ const toISODate = (date) => {
   return `${year}-${month}-${day}`
 }
 
+const formatWeekStart = (date) => {
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${day}.${month}`
+}
+
 const startOfWeek = (value = new Date()) => {
   const date = value instanceof Date ? new Date(value) : parseDate(value)
   date.setHours(0, 0, 0, 0)
@@ -237,17 +243,28 @@ const PlanningView = ({
 
   const monthSegments = useMemo(() => {
     const formatter = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
-    return weeks.reduce((segments, week, index) => {
-      const key = `${week.getFullYear()}-${week.getMonth()}`
-      const previous = segments[segments.length - 1]
-      if (previous?.key === key) {
-        previous.count += 1
-      } else {
-        segments.push({ key, label: formatter.format(week), start: index, count: 1 })
-      }
-      return segments
-    }, [])
-  }, [weeks])
+    const timelineEnd = addDays(visibleEnd, 1)
+    const segments = []
+    let monthStart = new Date(viewStart.getFullYear(), viewStart.getMonth(), 1)
+
+    while (monthStart < timelineEnd) {
+      const nextMonthStart = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1)
+      const visibleMonthStart = monthStart < viewStart ? viewStart : monthStart
+      const visibleMonthEnd = nextMonthStart > timelineEnd ? timelineEnd : nextMonthStart
+      const left = diffDays(viewStart, visibleMonthStart) / 7 * config.weekWidth
+      const width = diffDays(visibleMonthStart, visibleMonthEnd) / 7 * config.weekWidth
+
+      segments.push({
+        key: `${monthStart.getFullYear()}-${monthStart.getMonth()}`,
+        label: formatter.format(monthStart),
+        left,
+        width,
+      })
+      monthStart = nextMonthStart
+    }
+
+    return segments
+  }, [config.weekWidth, viewStart, visibleEnd])
 
   const todayOffset = diffDays(viewStart, new Date()) / 7 * config.weekWidth
   const todayVisible = todayOffset >= 0 && todayOffset <= timelineWidth
@@ -663,15 +680,15 @@ const PlanningView = ({
               <div>
                 <div className="relative h-8 border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
                   {monthSegments.map((segment) => (
-                    <div key={segment.key} className="absolute inset-y-0 flex items-center border-r border-slate-300 px-2 text-xs font-bold capitalize text-slate-600 dark:border-slate-600 dark:text-slate-300" style={{ left: segment.start * config.weekWidth, width: segment.count * config.weekWidth }}>
+                    <div key={segment.key} className="absolute inset-y-0 flex items-center overflow-hidden border-l border-slate-400 px-2 text-xs font-bold capitalize text-slate-600 dark:border-slate-500 dark:text-slate-300" style={{ left: segment.left, width: segment.width }}>
                       {segment.label}
                     </div>
                   ))}
                 </div>
                 <div className="flex h-8 bg-white dark:bg-slate-900">
                   {weeks.map((week) => (
-                    <div key={toISODate(week)} className="flex shrink-0 items-center justify-center border-r border-slate-100 text-[10px] font-semibold text-slate-400 dark:border-slate-800" style={{ width: config.weekWidth }}>
-                      S{String(Math.ceil((((week - new Date(week.getFullYear(), 0, 1)) / DAY_MS) + new Date(week.getFullYear(), 0, 1).getDay() + 1) / 7)).padStart(2, '0')}
+                    <div key={toISODate(week)} className="flex shrink-0 items-center justify-start border-r border-slate-100 px-1 text-[10px] font-semibold text-slate-400 dark:border-slate-800" style={{ width: config.weekWidth }}>
+                      {formatWeekStart(week)}
                     </div>
                   ))}
                 </div>
