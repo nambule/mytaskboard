@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { compartmentService } from '../services/compartmentService'
 import { supabase } from '../services/supabase'
 
+const getActiveCompartments = (compartments) => compartments.filter((compartment) => !compartment.archived_at)
+
 /**
  * Hook pour gérer les compartiments utilisateur
  */
@@ -115,7 +117,7 @@ export const useCompartments = () => {
       // Émettre un événement pour notifier les autres composants
       console.log('🔔 Emitting compartmentsUpdated event with:', updatedCompartments.map(c => c.name))
       window.dispatchEvent(new CustomEvent('compartmentsUpdated', { 
-        detail: { compartments: updatedCompartments } 
+        detail: { compartments: getActiveCompartments(updatedCompartments) }
       }))
       
       console.log('✅ Compartment created:', newCompartment.name)
@@ -144,7 +146,7 @@ export const useCompartments = () => {
       ).sort((a, b) => a.position - b.position)
       console.log('🔔 Emitting compartmentsUpdated event (update) with:', updatedCompartments.map(c => c.name))
       window.dispatchEvent(new CustomEvent('compartmentsUpdated', { 
-        detail: { compartments: updatedCompartments } 
+        detail: { compartments: getActiveCompartments(updatedCompartments) }
       }))
       
       console.log('✅ Compartment updated:', updatedCompartment.name)
@@ -156,38 +158,55 @@ export const useCompartments = () => {
     }
   }, [compartments])
 
-  // Supprimer un compartiment
-  const deleteCompartment = useCallback(async (id) => {
+  // Réorganiser les compartiments
+  const archiveCompartment = useCallback(async (id) => {
     try {
       setError(null)
-      console.log('🔄 Deleting compartment:', id)
-      
-      await compartmentService.deleteCompartment(id)
-      const updatedCompartments = compartments.filter(comp => comp.id !== id)
+      const result = await compartmentService.archiveCompartment(id)
+      const updatedCompartments = compartments.map((compartment) => (
+        compartment.id === id ? result.compartment : compartment
+      ))
       setCompartments(updatedCompartments)
-      
-      // Émettre un événement pour notifier les autres composants
-      window.dispatchEvent(new CustomEvent('compartmentsUpdated', { 
-        detail: { compartments: updatedCompartments } 
+      window.dispatchEvent(new CustomEvent('compartmentsUpdated', {
+        detail: { compartments: getActiveCompartments(updatedCompartments) },
       }))
-      
-      console.log('✅ Compartment deleted')
-      return true
+      return result
     } catch (err) {
-      console.error('❌ Error deleting compartment:', err)
+      console.error('Error archiving compartment:', err)
       setError(err.message)
       throw err
     }
   }, [compartments])
 
-  // Réorganiser les compartiments
+  const restoreCompartment = useCallback(async (id) => {
+    try {
+      setError(null)
+      const restoredCompartment = await compartmentService.restoreCompartment(id)
+      const updatedCompartments = compartments.map((compartment) => (
+        compartment.id === id ? restoredCompartment : compartment
+      )).sort((a, b) => a.position - b.position)
+      setCompartments(updatedCompartments)
+      window.dispatchEvent(new CustomEvent('compartmentsUpdated', {
+        detail: { compartments: getActiveCompartments(updatedCompartments) },
+      }))
+      return restoredCompartment
+    } catch (err) {
+      console.error('Error restoring compartment:', err)
+      setError(err.message)
+      throw err
+    }
+  }, [compartments])
+
   const reorderCompartments = useCallback(async (reorderedCompartments) => {
     try {
       setError(null)
       console.log('🔄 Reordering compartments...')
       
       // Mettre à jour l'état local immédiatement pour une meilleure UX
-      setCompartments(reorderedCompartments)
+      setCompartments([
+        ...reorderedCompartments,
+        ...compartments.filter((compartment) => compartment.archived_at),
+      ])
       
       // Envoyer les IDs dans le bon ordre au service
       const compartmentIds = reorderedCompartments.map(comp => comp.id)
@@ -208,22 +227,28 @@ export const useCompartments = () => {
       loadCompartments()
       throw err
     }
-  }, [loadCompartments])
+  }, [loadCompartments, compartments])
 
   // Obtenir les noms des compartiments pour compatibilité avec l'ancien système
   const getCompartmentNames = useCallback(() => {
-    return compartments.map(comp => comp.name)
+    return getActiveCompartments(compartments).map(comp => comp.name)
   }, [compartments])
 
+  const activeCompartments = getActiveCompartments(compartments)
+  const archivedCompartments = compartments.filter((compartment) => compartment.archived_at)
+
   return {
-    compartments,
+    compartments: activeCompartments,
+    archivedCompartments,
+    allCompartments: compartments,
     compartmentNames: getCompartmentNames(),
     loading,
     error,
     loadCompartments,
     createCompartment,
     updateCompartment,
-    deleteCompartment,
+    archiveCompartment,
+    restoreCompartment,
     reorderCompartments
   }
 }

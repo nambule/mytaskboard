@@ -83,6 +83,7 @@ src/
      - `migration-planning-view.sql` (task planning dates and reminders)
      - `migration-planning-periods.sql` (independent planning periods)
      - `migration-user-preferences.sql` (interface preferences synchronized between browsers)
+     - `migration-archive-compartments.sql` (reversible compartment archiving)
    - Copy `.env.example` to `.env` and add your credentials:
    ```env
    VITE_SUPABASE_URL=your_supabase_project_url

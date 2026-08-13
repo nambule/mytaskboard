@@ -139,6 +139,11 @@ function App() {
   const [cloudPreferencesReady, setCloudPreferencesReady] = useState(false)
   const [planningPreferences, setPlanningPreferences] = useState(sessionPreferences.planningPreferences)
   const { compartments: compartmentObjects, compartmentNames } = useCompartments()
+  const activeCompartmentIds = useMemo(
+    () => new Set(compartmentObjects.map((compartment) => compartment.id)),
+    [compartmentObjects],
+  )
+  const activeCompartmentNames = useMemo(() => new Set(compartmentNames), [compartmentNames])
   const [search, setSearch] = useState(sessionPreferences.search)
   const [priorityFilter, setPriorityFilter] = useState(sessionPreferences.priorityFilter)
   const [statusFilterState, setStatusFilterState] = useState(sessionPreferences.statusFilterState)
@@ -427,6 +432,9 @@ function App() {
         })()
         const matchesPriority = priorityFilter[t.priority]
         const matchesStatus = statusFilterState[t.status]
+        const matchesActiveCompartment = compartmentObjects.length === 0
+          || activeCompartmentIds.has(t.compartmentId)
+          || (!t.compartmentId && activeCompartmentNames.has(t.compartment))
         
         // Next Action filter logic
         const matchesNextAction = nextActionFilter === "All" || (() => {
@@ -437,7 +445,7 @@ function App() {
           return taskWhenOrder <= filterWhenOrder
         })()
         
-        return matchesSearch && matchesPriority && matchesStatus && matchesNextAction
+        return matchesSearch && matchesPriority && matchesStatus && matchesNextAction && matchesActiveCompartment
       })
       
       // Fonctions de tri
@@ -463,7 +471,7 @@ function App() {
     })
     
     return res
-  }, [order, groupBy, columns, tasks, search, priorityFilter, statusFilterState, nextActionFilter, sortBy])
+  }, [order, groupBy, columns, tasks, search, priorityFilter, statusFilterState, nextActionFilter, sortBy, compartmentObjects.length, activeCompartmentIds, activeCompartmentNames])
 
   const planningTasks = useMemo(() => Object.values(tasks).filter((task) => {
     const searchTerm = search.trim().toLowerCase()
@@ -474,11 +482,14 @@ function App() {
     const matchesPriority = priorityFilter[task.priority]
     const matchesStatus = statusFilterState[task.status]
     const matchesReminderType = showReminders || !task.planningExcluded
+    const matchesActiveCompartment = compartmentObjects.length === 0
+      || activeCompartmentIds.has(task.compartmentId)
+      || (!task.compartmentId && activeCompartmentNames.has(task.compartment))
     const matchesNextAction = nextActionFilter === 'All'
       || (WHEN_ORDER[task.when || ''] || 99) <= (WHEN_ORDER[nextActionFilter] || 99)
 
-    return matchesSearch && matchesPriority && matchesStatus && matchesNextAction && matchesReminderType
-  }), [tasks, search, priorityFilter, statusFilterState, nextActionFilter, showReminders])
+    return matchesSearch && matchesPriority && matchesStatus && matchesNextAction && matchesReminderType && matchesActiveCompartment
+  }), [tasks, search, priorityFilter, statusFilterState, nextActionFilter, showReminders, compartmentObjects.length, activeCompartmentIds, activeCompartmentNames])
 
   // Colonnes affichées (masquer "Terminé" si vide et pas filtré)
   const displayedColumns = useMemo(() => {

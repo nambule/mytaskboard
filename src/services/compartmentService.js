@@ -83,33 +83,44 @@ export const compartmentService = {
     return data
   },
 
-  /**
-   * Supprimer un compartiment
-   */
-  async deleteCompartment(id) {
+  async archiveCompartment(id) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('User not authenticated')
 
-    // Vérifier s'il y a des tâches dans ce compartiment
-    const { data: tasks } = await supabase
-      .from('tasks')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('compartment', id)
-      .limit(1)
-
-    if (tasks && tasks.length > 0) {
-      throw new Error('Cannot delete compartment that contains tasks. Please move or delete all tasks first.')
-    }
-
-    const { error } = await supabase
-      .from('compartments')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
+    const { data: completedTasks, error } = await supabase
+      .rpc('archive_compartment', { p_compartment_id: id })
 
     if (error) throw error
-    return true
+
+    const { data: compartment, error: compartmentError } = await supabase
+      .from('compartments')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (compartmentError) throw compartmentError
+    return { compartment, completedTasks: completedTasks || 0 }
+  },
+
+  async restoreCompartment(id) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('User not authenticated')
+
+    const { error } = await supabase
+      .rpc('restore_compartment', { p_compartment_id: id })
+
+    if (error) throw error
+
+    const { data, error: compartmentError } = await supabase
+      .from('compartments')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (compartmentError) throw compartmentError
+    return data
   },
 
   /**
