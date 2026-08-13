@@ -55,7 +55,7 @@ const BoardToolbar = ({
   filterRef,
   viewRef,
 }) => (
-  <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-[#F6F7F9]/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
+  <header id="board-toolbar" className="sticky top-0 z-50 border-b border-slate-200/80 bg-[#F6F7F9]/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
     <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3 sm:gap-5">

@@ -96,11 +96,13 @@ const PlanningView = ({
   onDeletePeriod,
 }) => {
   const timelineScrollRef = useRef(null)
+  const calendarTrackRef = useRef(null)
   const resizeRef = useRef(null)
   const periodResizeRef = useRef(null)
   const [resizeDraft, setResizeDraft] = useState(null)
   const [periodResizeDraft, setPeriodResizeDraft] = useState(null)
   const [periodEditor, setPeriodEditor] = useState(null)
+  const [toolbarHeight, setToolbarHeight] = useState(0)
   const [planningTaskSort, setPlanningTaskSort] = useState(() => {
     try {
       const saved = sessionStorage.getItem('kanban-planning-task-sort')
@@ -150,6 +152,28 @@ const PlanningView = ({
   ), [config.weeks, viewStart])
   const timelineWidth = config.weeks * config.weekWidth
   const visibleEnd = endOfWeek(weeks[weeks.length - 1])
+
+  useEffect(() => {
+    const toolbar = document.getElementById('board-toolbar')
+    if (!toolbar) return undefined
+
+    const updateToolbarHeight = () => setToolbarHeight(Math.ceil(toolbar.getBoundingClientRect().height))
+    updateToolbarHeight()
+
+    const resizeObserver = new ResizeObserver(updateToolbarHeight)
+    resizeObserver.observe(toolbar)
+    window.addEventListener('resize', updateToolbarHeight)
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', updateToolbarHeight)
+    }
+  }, [])
+
+  const syncCalendarScroll = (event) => {
+    if (calendarTrackRef.current) {
+      calendarTrackRef.current.style.transform = `translateX(-${event.currentTarget.scrollLeft}px)`
+    }
+  }
 
   useEffect(() => {
     try {
@@ -776,11 +800,14 @@ const PlanningView = ({
       )}
 
       <div className="mt-4 hidden md:block">
-        <div ref={timelineScrollRef} className="scrollbar-subtle overflow-x-auto rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-          <div style={{ minWidth: 260 + timelineWidth }}>
-            <div className="grid border-b border-slate-200 dark:border-slate-700" style={{ gridTemplateColumns: `260px ${timelineWidth}px` }}>
-              <div className="sticky left-0 z-30 flex items-center border-r border-slate-200 bg-slate-50 px-4 text-xs font-bold uppercase tracking-[0.12em] text-slate-400 dark:border-slate-700 dark:bg-slate-900">Tâches</div>
-              <div>
+        <div className="relative rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+          <div
+            className="sticky z-40 grid overflow-hidden rounded-t-2xl border-b border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
+            style={{ top: toolbarHeight, gridTemplateColumns: '260px minmax(0, 1fr)' }}
+          >
+            <div className="flex items-center border-r border-slate-200 bg-slate-50 px-4 text-xs font-bold uppercase tracking-[0.12em] text-slate-400 dark:border-slate-700 dark:bg-slate-900">Tâches</div>
+            <div className="overflow-hidden">
+              <div ref={calendarTrackRef} style={{ width: timelineWidth, willChange: 'transform' }}>
                 <div className="relative h-8 border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
                   {monthSegments.map((segment) => (
                     <div key={segment.key} className="absolute inset-y-0 flex items-center overflow-hidden border-l border-slate-400 px-2 text-xs font-bold capitalize text-slate-600 dark:border-slate-500 dark:text-slate-300" style={{ left: segment.left, width: segment.width }}>
@@ -797,6 +824,10 @@ const PlanningView = ({
                 </div>
               </div>
             </div>
+          </div>
+
+          <div ref={timelineScrollRef} onScroll={syncCalendarScroll} className="scrollbar-subtle overflow-x-auto rounded-b-2xl">
+            <div style={{ minWidth: 260 + timelineWidth }}>
 
             <div className="grid h-12 border-b border-violet-200 bg-violet-50/40 dark:border-violet-900 dark:bg-violet-950/10" style={{ gridTemplateColumns: `260px ${timelineWidth}px` }}>
               <div className="sticky left-0 z-30 flex items-center justify-between border-r border-violet-200 bg-violet-50 px-4 dark:border-violet-900 dark:bg-violet-950/40">
@@ -869,6 +900,7 @@ const PlanningView = ({
               </div>
             )}
           </div>
+        </div>
         </div>
         <StickyBoardScrollbar targetRef={timelineScrollRef} contentKey={`${zoom}-${plannedTasks.length}`} />
       </div>
