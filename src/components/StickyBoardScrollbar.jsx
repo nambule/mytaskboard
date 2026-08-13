@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
-const StickyBoardScrollbar = ({ targetRef, contentKey }) => {
+const StickyBoardScrollbar = ({ targetRef, contentKey, ariaLabel = 'Défilement horizontal' }) => {
   const scrollbarRef = useRef(null)
   const syncingRef = useRef(null)
   const frameRef = useRef(null)
@@ -53,8 +54,8 @@ const StickyBoardScrollbar = ({ targetRef, contentKey }) => {
 
     const resizeObserver = new ResizeObserver(updateMetrics)
     resizeObserver.observe(target)
-    const board = target.querySelector('.board-grid')
-    if (board) resizeObserver.observe(board)
+    const content = target.firstElementChild
+    if (content) resizeObserver.observe(content)
 
     return () => {
       target.removeEventListener('scroll', syncScrollbar)
@@ -65,15 +66,18 @@ const StickyBoardScrollbar = ({ targetRef, contentKey }) => {
     }
   }, [targetRef, contentKey])
 
-  return (
+  if (typeof document === 'undefined') return null
+
+  return createPortal((
     <div
       ref={scrollbarRef}
-      className={`${metrics.visible ? 'md:block' : 'hidden'} scrollbar-subtle fixed inset-x-0 bottom-0 z-50 h-5 overflow-x-auto overflow-y-hidden border-t border-slate-200 bg-[#F6F7F9]/95 backdrop-blur dark:border-slate-700 dark:bg-slate-950/95`}
-      aria-label="Défilement horizontal du tableau"
+      className={`${metrics.visible ? 'md:block' : 'hidden'} sticky-horizontal-scrollbar fixed inset-x-0 bottom-0 z-[60] h-[18px] overflow-x-auto overflow-y-hidden bg-[#F6F7F9] dark:bg-slate-950`}
+      aria-label={ariaLabel}
+      tabIndex={metrics.visible ? 0 : -1}
     >
       <div className="h-px" style={{ width: metrics.contentWidth }} />
     </div>
-  )
+  ), document.body)
 }
 
 export default StickyBoardScrollbar

@@ -49,6 +49,47 @@ textarea {
   scrollbar-width: thin;
 }
 
+.sticky-horizontal-scrollbar {
+  scrollbar-color: #94a3b8 #e2e8f0;
+  scrollbar-width: auto;
+}
+
+.sticky-horizontal-scrollbar::-webkit-scrollbar {
+  height: 18px;
+}
+
+.sticky-horizontal-scrollbar::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+
+.sticky-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  min-width: 56px;
+  border: 3px solid #e2e8f0;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.sticky-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+.dark .sticky-horizontal-scrollbar {
+  scrollbar-color: #64748b #1e293b;
+}
+
+.dark .sticky-horizontal-scrollbar::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark .sticky-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  border-color: #1e293b;
+  background: #64748b;
+}
+
+.dark .sticky-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .surface-shadow {
   box-shadow: 0 14px 38px rgba(23, 32, 51, 0.08);
 }

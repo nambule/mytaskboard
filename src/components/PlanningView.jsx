@@ -984,7 +984,11 @@ const PlanningView = ({
           </div>
         </div>
         </div>
-        <StickyBoardScrollbar targetRef={timelineScrollRef} contentKey={`${zoom}-${plannedTasks.length}`} />
+        <StickyBoardScrollbar
+          targetRef={timelineScrollRef}
+          contentKey={`${zoom}-${plannedTasks.length}`}
+          ariaLabel="Défilement horizontal du planning"
+        />
       </div>
 
       <div className="mt-4 space-y-5 md:hidden">

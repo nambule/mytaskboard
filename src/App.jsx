@@ -1281,6 +1281,7 @@ Quick Task
         <StickyBoardScrollbar
           targetRef={boardScrollRef}
           contentKey={`${groupBy}-${displayedColumns.length}`}
+          ariaLabel="Défilement horizontal du tableau"
         />
 
         {/* Empty State Guide - shown when no tasks exist */}
