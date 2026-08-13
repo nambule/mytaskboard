@@ -181,17 +181,19 @@ const PlanningView = ({
       groupMap.get(name).push(task)
     })
     const compareTasks = (first, second) => {
+      const compareTitles = () => first.title.localeCompare(second.title, 'fr', { sensitivity: 'base' })
+      const compareStartDates = () => first.planningStartDate.localeCompare(second.planningStartDate)
+      const comparePriorities = () => (
+        (PRIORITY_RANK[first.priority] || 99) - (PRIORITY_RANK[second.priority] || 99)
+      )
+
       if (planningTaskSort === 'alphabetical') {
-        return first.title.localeCompare(second.title, 'fr', { sensitivity: 'base' })
+        return compareTitles() || compareStartDates() || comparePriorities()
       }
       if (planningTaskSort === 'priority') {
-        const priorityDifference = (PRIORITY_RANK[first.priority] || 99) - (PRIORITY_RANK[second.priority] || 99)
-        if (priorityDifference !== 0) return priorityDifference
-      } else {
-        const dateDifference = first.planningStartDate.localeCompare(second.planningStartDate)
-        if (dateDifference !== 0) return dateDifference
+        return comparePriorities() || compareStartDates() || compareTitles()
       }
-      return first.title.localeCompare(second.title, 'fr', { sensitivity: 'base' })
+      return compareStartDates() || comparePriorities() || compareTitles()
     }
 
     return Array.from(groupMap.entries())
