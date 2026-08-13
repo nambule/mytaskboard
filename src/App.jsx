@@ -77,6 +77,11 @@ const STATUS_COLUMN_COLORS = {
   Done: STATUS_COLORS.Done,
   Cancelled: STATUS_COLORS.Cancelled,
 }
+const DEFAULT_COLUMN_COLORS = {
+  bg: '#F1F5F9',
+  text: '#334155',
+  border: '#CBD5E1',
+}
 
 const restoreBooleanFilter = (savedFilter, defaultFilter) => (
   Object.fromEntries(
@@ -138,12 +143,19 @@ function App() {
   const [showSchedulingFields, setShowSchedulingFields] = useState(sessionPreferences.showSchedulingFields)
   const [cloudPreferencesReady, setCloudPreferencesReady] = useState(false)
   const [planningPreferences, setPlanningPreferences] = useState(sessionPreferences.planningPreferences)
-  const { compartments: compartmentObjects, compartmentNames } = useCompartments()
-  const activeCompartmentIds = useMemo(
-    () => new Set(compartmentObjects.map((compartment) => compartment.id)),
-    [compartmentObjects],
+  const {
+    compartments: compartmentObjects,
+    archivedCompartments,
+    compartmentNames,
+  } = useCompartments()
+  const archivedCompartmentIds = useMemo(
+    () => new Set(archivedCompartments.map((compartment) => compartment.id)),
+    [archivedCompartments],
   )
-  const activeCompartmentNames = useMemo(() => new Set(compartmentNames), [compartmentNames])
+  const archivedCompartmentNames = useMemo(
+    () => new Set(archivedCompartments.map((compartment) => compartment.name)),
+    [archivedCompartments],
+  )
   const [search, setSearch] = useState(sessionPreferences.search)
   const [priorityFilter, setPriorityFilter] = useState(sessionPreferences.priorityFilter)
   const [statusFilterState, setStatusFilterState] = useState(sessionPreferences.statusFilterState)
@@ -408,7 +420,18 @@ function App() {
     const res = {}
     
     columns.forEach((col) => {
-      let ids = (current[col] || []).filter((id) => {
+      const orderedIds = current[col] || []
+      const orderedIdSet = new Set(orderedIds)
+      const missingIds = Object.values(tasks)
+        .filter((task) => {
+          if (groupBy === 'compartment') return task.compartment === col
+          if (groupBy === 'priority') return task.priority === col
+          return task.status === col
+        })
+        .map((task) => task.id)
+        .filter((id) => !orderedIdSet.has(id))
+
+      let ids = [...orderedIds, ...missingIds].filter((id) => {
         const t = tasks[id]
         if (!t) return false
         
@@ -432,9 +455,8 @@ function App() {
         })()
         const matchesPriority = priorityFilter[t.priority]
         const matchesStatus = statusFilterState[t.status]
-        const matchesActiveCompartment = compartmentObjects.length === 0
-          || activeCompartmentIds.has(t.compartmentId)
-          || (!t.compartmentId && activeCompartmentNames.has(t.compartment))
+        const matchesActiveCompartment = !archivedCompartmentIds.has(t.compartmentId)
+          && !archivedCompartmentNames.has(t.compartment)
         
         // Next Action filter logic
         const matchesNextAction = nextActionFilter === "All" || (() => {
@@ -471,7 +493,7 @@ function App() {
     })
     
     return res
-  }, [order, groupBy, columns, tasks, search, priorityFilter, statusFilterState, nextActionFilter, sortBy, compartmentObjects.length, activeCompartmentIds, activeCompartmentNames])
+  }, [order, groupBy, columns, tasks, search, priorityFilter, statusFilterState, nextActionFilter, sortBy, archivedCompartmentIds, archivedCompartmentNames])
 
   const planningTasks = useMemo(() => Object.values(tasks).filter((task) => {
     const searchTerm = search.trim().toLowerCase()
@@ -482,14 +504,13 @@ function App() {
     const matchesPriority = priorityFilter[task.priority]
     const matchesStatus = statusFilterState[task.status]
     const matchesReminderType = showReminders || !task.planningExcluded
-    const matchesActiveCompartment = compartmentObjects.length === 0
-      || activeCompartmentIds.has(task.compartmentId)
-      || (!task.compartmentId && activeCompartmentNames.has(task.compartment))
+    const matchesActiveCompartment = !archivedCompartmentIds.has(task.compartmentId)
+      && !archivedCompartmentNames.has(task.compartment)
     const matchesNextAction = nextActionFilter === 'All'
       || (WHEN_ORDER[task.when || ''] || 99) <= (WHEN_ORDER[nextActionFilter] || 99)
 
     return matchesSearch && matchesPriority && matchesStatus && matchesNextAction && matchesReminderType && matchesActiveCompartment
-  }), [tasks, search, priorityFilter, statusFilterState, nextActionFilter, showReminders, compartmentObjects.length, activeCompartmentIds, activeCompartmentNames])
+  }), [tasks, search, priorityFilter, statusFilterState, nextActionFilter, showReminders, archivedCompartmentIds, archivedCompartmentNames])
 
   // Colonnes affichées (masquer "Terminé" si vide et pas filtré)
   const displayedColumns = useMemo(() => {
@@ -581,9 +602,9 @@ function App() {
       }
     }
 
-    const colors = groupBy === 'priority'
+    const colors = (groupBy === 'priority'
       ? PRIORITY_COLUMN_COLORS[column]
-      : STATUS_COLUMN_COLORS[column]
+      : STATUS_COLUMN_COLORS[column]) || DEFAULT_COLUMN_COLORS
     return {
       backgroundColor: colors.bg,
       color: colors.text,
