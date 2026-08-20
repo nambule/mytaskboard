@@ -619,6 +619,27 @@ const PlanningView = ({
     if (clippedEnd <= 0 || clippedStart >= config.weeks || clippedEnd <= clippedStart) return null
 
     const colors = getCompartmentColors(task.compartment)
+    const barLeft = clippedStart * config.weekWidth + 3
+    const barWidth = Math.max(24, (clippedEnd - clippedStart) * config.weekWidth - 6)
+    const subtaskMarkers = (task.subtasks || []).flatMap((subtask) => {
+      const showInPlanning = typeof subtask.showInPlanning === 'boolean'
+        ? subtask.showInPlanning
+        : !!subtask.startDate
+      if (!showInPlanning) return []
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(subtask.startDate || '')) return []
+      const markerDate = parseDate(subtask.startDate)
+      if (Number.isNaN(markerDate.getTime()) || markerDate < start || markerDate > end) return []
+      if (markerDate < viewStart || markerDate > visibleEnd) return []
+
+      const timelineLeft = diffDays(viewStart, markerDate) / 7 * config.weekWidth
+      return [{
+        ...subtask,
+        left: Math.min(barWidth - 5, Math.max(5, timelineLeft - barLeft)),
+      }]
+    })
+    const subtaskMarkerSummary = subtaskMarkers
+      .map((subtask) => `${subtask.title} (${subtask.startDate})`)
+      .join(', ')
     return (
       <div
         draggable={!draft}
@@ -626,13 +647,13 @@ const PlanningView = ({
         onClick={() => onOpenTask(task.id)}
         className={`absolute top-2 z-10 flex h-9 cursor-grab items-center overflow-hidden rounded-lg border text-xs font-semibold shadow-sm active:cursor-grabbing ${task.flagged ? 'ring-2 ring-[#D64C4C] ring-offset-1' : ''}`}
         style={{
-          left: clippedStart * config.weekWidth + 3,
-          width: Math.max(24, (clippedEnd - clippedStart) * config.weekWidth - 6),
+          left: barLeft,
+          width: barWidth,
           backgroundColor: colors.bg,
           color: colors.text,
           borderColor: colors.border,
         }}
-        title={`${task.title} · ${formatWeekRange(task.planningStartDate, task.planningEndDate)}`}
+        title={`${task.title} · ${formatWeekRange(task.planningStartDate, task.planningEndDate)}${subtaskMarkerSummary ? ` · Sous-tâches : ${subtaskMarkerSummary}` : ''}`}
       >
         {rawStart >= 0 && (
           <button
@@ -645,6 +666,26 @@ const PlanningView = ({
             <span className="h-4 w-0.5 rounded opacity-60" style={{ backgroundColor: colors.text }} />
           </button>
         )}
+        {subtaskMarkers.map((subtask) => (
+          <span
+            key={subtask.id}
+            role="img"
+            className="absolute inset-y-0 z-20 w-3 -translate-x-1/2 cursor-help"
+            style={{ left: subtask.left }}
+            title={`${subtask.title} · ${subtask.startDate}`}
+            aria-label={`${subtask.title}, début le ${subtask.startDate}`}
+          >
+            <span
+              className="pointer-events-none absolute inset-y-1 left-1/2 w-0.5 -translate-x-1/2 rounded-full shadow-sm"
+              style={{ backgroundColor: colors.text }}
+            >
+              <span
+                className="absolute -left-[3px] -top-0.5 h-2 w-2 rotate-45 rounded-[2px] border bg-white"
+                style={{ borderColor: colors.text }}
+              />
+            </span>
+          </span>
+        ))}
         <span className="min-w-0 flex-1 truncate px-2">{task.title}</span>
         {task.completion > 0 && <span className="pr-2 text-[10px] opacity-80">{task.completion}%</span>}
         {rawEnd <= config.weeks && (

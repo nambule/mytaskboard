@@ -103,7 +103,9 @@ const TaskModal = ({
     (arr || []).map((s) => ({
       ...s, 
       status: s.status || (s.done ? "Done" : "To Do"),
-      nextAction: s.nextAction || false
+      nextAction: s.nextAction || false,
+      startDate: s.startDate || "",
+      showInPlanning: typeof s.showInPlanning === "boolean" ? s.showInPlanning : !!s.startDate,
     }))
   
   const [subtasks, setSubtasks] = useState(normalizeSubtasks(editing?.subtasks || []))
@@ -117,7 +119,9 @@ const TaskModal = ({
       id: Math.random().toString(36).slice(2, 10), 
       title: subInput.trim(), 
       status: "To Do",
-      nextAction: false
+      nextAction: false,
+      startDate: "",
+      showInPlanning: false,
     }])
     setSubInput("")
   }
@@ -135,6 +139,18 @@ const TaskModal = ({
 
   const handleSubtaskStatusChange = (subId, newStatus) => {
     setSubtasks(prev => prev.map(x => x.id === subId ? { ...x, status: newStatus } : x))
+  }
+
+  const handleSubtaskStartDateChange = (subId, startDateValue) => {
+    setSubtasks(prev => prev.map(x => (
+      x.id === subId ? { ...x, startDate: startDateValue } : x
+    )))
+  }
+
+  const handleSubtaskPlanningChange = (subId, showInPlanning) => {
+    setSubtasks(prev => prev.map(x => (
+      x.id === subId ? { ...x, showInPlanning } : x
+    )))
   }
 
   const handleSetNextAction = (subId) => {
@@ -252,7 +268,7 @@ const TaskModal = ({
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }} 
       tabIndex={-1}
     >
-      <div role="dialog" aria-modal="true" aria-labelledby="task-modal-title" className="app-modal flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+      <div role="dialog" aria-modal="true" aria-labelledby="task-modal-title" className="app-modal flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
         <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col min-h-0 max-h-full">
           {/* En-tête */}
           <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
@@ -699,10 +715,10 @@ const TaskModal = ({
                   <Plus className="h-4 w-4" />
                 </button>
               </div>
-              <ul className="mt-2 divide-y divide-slate-200 rounded-xl border border-slate-200 max-h-36 overflow-auto">
+              <ul className="mt-2 max-h-56 divide-y divide-slate-200 overflow-auto rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
                 {subtasks.map((s) => (
-                  <li key={s.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                    <div className="flex items-center gap-2 flex-1">
+                  <li key={s.id} className="flex flex-col gap-2 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
                       <button
                         type="button"
                         onClick={() => handleSetNextAction(s.id)}
@@ -715,12 +731,36 @@ const TaskModal = ({
                       >
                         <Star className={`h-4 w-4 ${s.nextAction ? 'fill-current' : ''}`} />
                       </button>
-                      <span className={`${s.status === "Done" ? "line-through text-slate-400" : ""} ${s.nextAction ? "font-medium text-slate-900" : ""}`}>
+                      <span className={`min-w-0 flex-1 truncate ${s.status === "Done" ? "line-through text-slate-400" : ""} ${s.nextAction ? "font-medium text-slate-900 dark:text-white" : ""}`}>
                         {s.title}
                         {s.nextAction && <span className="ml-1 text-xs text-amber-600 font-semibold">(prochaine)</span>}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                      <label className="flex h-7 items-center gap-1.5 rounded-lg border border-slate-200 px-2 text-[11px] font-medium text-slate-600 dark:border-slate-600 dark:text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={!!s.showInPlanning}
+                          onChange={(event) => handleSubtaskPlanningChange(s.id, event.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
+                          disabled={loading}
+                        />
+                        <span>Planning</span>
+                      </label>
+                      {s.showInPlanning && (
+                        <label className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                          <span className="sr-only">Date de début de {s.title}</span>
+                          <span aria-hidden="true">Début</span>
+                          <input
+                            type="date"
+                            value={s.startDate || ""}
+                            onChange={(event) => handleSubtaskStartDateChange(s.id, event.target.value)}
+                            className="h-7 rounded-lg border border-slate-200 bg-white px-1.5 text-[11px] text-slate-700 outline-none focus:border-blue-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                            aria-label={`Date de début de ${s.title}`}
+                            disabled={loading}
+                          />
+                        </label>
+                      )}
                       <div className="flex items-center gap-1">
                         {["To Do", "In Progress", "Done"].map(status => (
                           <button
