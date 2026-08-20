@@ -1,11 +1,13 @@
 import React from 'react'
 import {
+  AlertTriangle,
   ChevronDown,
   Filter,
   Inbox,
   CalendarRange,
   Columns,
   LayoutPanelTop,
+  ListTodo,
   Moon,
   Search,
   Sun,
@@ -13,6 +15,7 @@ import {
 } from 'lucide-react'
 import {
   PRIORITIES,
+  PRIORITY_STYLES,
   STATUSES,
   STATUS_LABELS,
   WHEN_LABELS,
@@ -21,6 +24,15 @@ import {
 import AccountMenu from './AccountMenu'
 
 const controlClass = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+const planningDateFormatter = new Intl.DateTimeFormat('fr-FR', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+})
+const formatPlanningDate = (value) => {
+  const [year, month, day] = value.split('-').map(Number)
+  return planningDateFormatter.format(new Date(year, month - 1, day))
+}
 
 const BoardToolbar = ({
   user,
@@ -49,11 +61,15 @@ const BoardToolbar = ({
   onToggleDarkMode,
   quickTaskCount,
   onOpenQuickTasks,
+  inProgressTasks,
+  startedTasksPendingStatus,
+  onOpenTask,
   onSignOut,
   showSchedulingFields,
   onToggleSchedulingFields,
   filterRef,
   viewRef,
+  inProgressRef,
 }) => (
   <header id="board-toolbar" className="sticky top-0 z-50 border-b border-slate-200/80 bg-[#F6F7F9]/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
     <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-6">
@@ -85,6 +101,109 @@ const BoardToolbar = ({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <details ref={inProgressRef} className="relative">
+            <summary
+              className={`${controlClass} relative list-none cursor-pointer select-none px-3 sm:px-4`}
+              aria-label={`${inProgressTasks.length} sujets en cours, ${startedTasksPendingStatus.length} démarrages passés à vérifier`}
+            >
+              <ListTodo className="h-4 w-4" />
+              <span className="hidden lg:inline">En cours</span>
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-100 px-1 text-[10px] font-bold text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                {inProgressTasks.length}
+              </span>
+              {startedTasksPendingStatus.length > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-100 px-1 text-[10px] font-bold text-red-700 dark:bg-red-950 dark:text-red-300">
+                  {startedTasksPendingStatus.length}
+                </span>
+              )}
+            </summary>
+            <div className="absolute right-0 z-50 mt-2 w-[min(28rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                <div>
+                  <h2 className="font-display text-sm font-bold text-slate-900 dark:text-white">Suivi des sujets</h2>
+                  <p className="mt-0.5 text-xs text-slate-400">Statuts actuels et démarrages à vérifier</p>
+                </div>
+                <ListTodo className="h-5 w-5 text-slate-400" />
+              </div>
+
+              <div className="max-h-[min(34rem,70vh)] overflow-y-auto">
+                <section aria-labelledby="in-progress-heading">
+                  <div className="flex items-center justify-between bg-amber-50/70 px-4 py-2.5 dark:bg-amber-950/20">
+                    <h3 id="in-progress-heading" className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-800 dark:text-amber-300">En cours</h3>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-amber-800 shadow-sm dark:bg-slate-900 dark:text-amber-300">{inProgressTasks.length}</span>
+                  </div>
+                  {inProgressTasks.length > 0 ? (
+                    <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {inProgressTasks.map((task) => (
+                        <li key={task.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (inProgressRef?.current) inProgressRef.current.open = false
+                              onOpenTask(task.id)
+                            }}
+                            className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-amber-50/70 focus:bg-amber-50/70 focus:outline-none dark:hover:bg-amber-950/30 dark:focus:bg-amber-950/30"
+                          >
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400 ring-4 ring-amber-100 dark:ring-amber-950" />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-semibold text-slate-800 group-hover:text-slate-950 dark:text-slate-100 dark:group-hover:text-white">{task.title}</span>
+                              <span className="mt-1 flex min-w-0 items-center gap-2 text-xs text-slate-400">
+                                <span className="truncate">{task.compartment}</span>
+                                <span aria-hidden="true">·</span>
+                                <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${PRIORITY_STYLES[task.priority] || ''}`}>{task.priority}</span>
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="px-4 py-4 text-xs text-slate-400">Aucun sujet n’est actuellement marqué « En cours ».</p>
+                  )}
+                </section>
+
+                <section aria-labelledby="started-pending-heading" className="border-t border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between bg-red-50/70 px-4 py-2.5 dark:bg-red-950/20">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                      <h3 id="started-pending-heading" className="text-[11px] font-bold uppercase tracking-[0.12em] text-red-700 dark:text-red-300">Démarrage passé</h3>
+                    </div>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-red-700 shadow-sm dark:bg-slate-900 dark:text-red-300">{startedTasksPendingStatus.length}</span>
+                  </div>
+                  {startedTasksPendingStatus.length > 0 ? (
+                    <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {startedTasksPendingStatus.map((task) => (
+                        <li key={task.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (inProgressRef?.current) inProgressRef.current.open = false
+                              onOpenTask(task.id)
+                            }}
+                            className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-red-50/70 focus:bg-red-50/70 focus:outline-none dark:hover:bg-red-950/30 dark:focus:bg-red-950/30"
+                          >
+                            <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-semibold text-slate-800 group-hover:text-slate-950 dark:text-slate-100 dark:group-hover:text-white">{task.title}</span>
+                              <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
+                                <span className="truncate">{task.compartment}</span>
+                                <span aria-hidden="true">·</span>
+                                <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${PRIORITY_STYLES[task.priority] || ''}`}>{task.priority}</span>
+                                <span aria-hidden="true">·</span>
+                                <span className="font-medium text-red-600 dark:text-red-400">Depuis le {formatPlanningDate(task.planningStartDate)}</span>
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="px-4 py-4 text-xs text-slate-400">Aucun démarrage planifié ne nécessite de mise à jour.</p>
+                  )}
+                </section>
+              </div>
+            </div>
+          </details>
           <button
             type="button"
             onClick={onOpenQuickTasks}

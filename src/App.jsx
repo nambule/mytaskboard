@@ -344,6 +344,7 @@ function App() {
   // Référence pour fermer les filtres et menu visualisation
   const filterRef = useRef(null)
   const viewRef = useRef(null)
+  const inProgressRef = useRef(null)
   const boardScrollRef = useRef(null)
   const boardHeaderTrackRef = useRef(null)
   const [boardToolbarHeight, setBoardToolbarHeight] = useState(0)
@@ -375,6 +376,7 @@ function App() {
     function onDocMouseDown(e) {
       const filterEl = filterRef.current
       const viewEl = viewRef.current
+      const inProgressEl = inProgressRef.current
       
       if (filterEl && filterEl.open && !filterEl.contains(e.target)) {
         try { filterEl.open = false } catch(_) {}
@@ -385,11 +387,17 @@ function App() {
         try { viewEl.open = false } catch(_) {}
         viewEl.removeAttribute('open')
       }
+
+      if (inProgressEl && inProgressEl.open && !inProgressEl.contains(e.target)) {
+        try { inProgressEl.open = false } catch(_) {}
+        inProgressEl.removeAttribute('open')
+      }
     }
     function onKey(e) {
       if (e.key === 'Escape') {
         const filterEl = filterRef.current
         const viewEl = viewRef.current
+        const inProgressEl = inProgressRef.current
         
         if (filterEl && filterEl.open) { 
           try { filterEl.open = false } catch(_) {} 
@@ -398,6 +406,10 @@ function App() {
         if (viewEl && viewEl.open) { 
           try { viewEl.open = false } catch(_) {} 
           viewEl.removeAttribute('open') 
+        }
+        if (inProgressEl && inProgressEl.open) {
+          try { inProgressEl.open = false } catch(_) {}
+          inProgressEl.removeAttribute('open')
         }
       }
     }
@@ -582,6 +594,42 @@ function App() {
 
     return filters
   }, [priorityFilter, statusFilterState, nextActionFilter, showReminders, currentView])
+
+  const inProgressTasks = useMemo(() => Object.values(tasks)
+    .filter((task) => (
+      task.status === 'In Progress'
+      && !archivedCompartmentIds.has(task.compartmentId)
+      && !archivedCompartmentNames.has(task.compartment)
+    ))
+    .sort((first, second) => (
+      (PRIORITY_RANK[first.priority] || 99) - (PRIORITY_RANK[second.priority] || 99)
+      || (first.compartment || '').localeCompare(second.compartment || '', 'fr')
+      || first.title.localeCompare(second.title, 'fr')
+    )), [tasks, archivedCompartmentIds, archivedCompartmentNames])
+
+  const startedTasksPendingStatus = useMemo(() => {
+    const today = new Date()
+    const todayISO = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('-')
+
+    return Object.values(tasks)
+      .filter((task) => (
+        task.planningStartDate
+        && task.planningStartDate < todayISO
+        && !task.planningExcluded
+        && !['In Progress', 'Done', 'Cancelled'].includes(task.status)
+        && !archivedCompartmentIds.has(task.compartmentId)
+        && !archivedCompartmentNames.has(task.compartment)
+      ))
+      .sort((first, second) => (
+        first.planningStartDate.localeCompare(second.planningStartDate)
+        || (PRIORITY_RANK[first.priority] || 99) - (PRIORITY_RANK[second.priority] || 99)
+        || first.title.localeCompare(second.title, 'fr')
+      ))
+  }, [tasks, archivedCompartmentIds, archivedCompartmentNames])
 
   // Check if all compartments are empty (no tasks at all)
   const hasAnyTasks = Object.keys(tasks).length > 0
@@ -978,11 +1026,15 @@ function App() {
         onToggleDarkMode={() => setDarkMode((current) => !current)}
         quickTaskCount={quickTasks.length}
         onOpenQuickTasks={() => setQuickOpen(true)}
+        inProgressTasks={inProgressTasks}
+        startedTasksPendingStatus={startedTasksPendingStatus}
+        onOpenTask={openEdit}
         onSignOut={signOut}
         showSchedulingFields={showSchedulingFields}
         onToggleSchedulingFields={setShowSchedulingFields}
         filterRef={filterRef}
         viewRef={viewRef}
+        inProgressRef={inProgressRef}
       />
 
       {/* Barre supérieure */}
